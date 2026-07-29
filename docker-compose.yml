@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: fungai-mongodb
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - fungai-net
+
+  rag-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fungai-rag-server
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chroma_db:/app/chroma_db
+      - ./data:/app/data
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    networks:
+      - fungai-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  librechat:
+    image: ghcr.io/danny-avila/librechat:latest
+    container_name: fungai-librechat
+    restart: always
+    ports:
+      - "3080:3080"
+    depends_on:
+      - mongodb
+      - rag-server
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/librechat
+      - MEILI_HOST=http://meilisearch:7700
+      - MEILI_HTTP_ADDR=meilisearch
+      - MEILI_MASTER_KEY=optional-master-key
+    volumes:
+      - ./librechat.yml:/app/librechat.yaml
+      - librechat_images:/app/client/public/images
+    networks:
+      - fungai-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  mongodb_data:
+  librechat_images:
+
+networks:
+  fungai-net:
+    driver: bridge

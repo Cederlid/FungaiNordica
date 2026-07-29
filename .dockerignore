@@ -1,0 +1,6 @@
+chroma_db/
+data/
+__pycache__/
+.git/
+.DS_Store
+*.pyc
