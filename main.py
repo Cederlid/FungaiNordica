@@ -8,18 +8,30 @@ from rag.pdf_loader import load_and_chunk
 from rag.vectorstore import add_documents, query_documents, get_doc_count
 from rag.llm import rag_answer
 from rag.identifier import identify_mushroom
+from rag.ocr import process_spore_images
 
 
-def ingest(pdf_path: str):
+def ingest(pdf_path: str, ocr_model: str | None = None):
     if not os.path.exists(pdf_path):
         print(f"Error: File not found: {pdf_path}")
         return
-    print(f"Loading {pdf_path}...")
-    chunks = load_and_chunk(pdf_path)
-    print(f"Split into {len(chunks)} chunks")
     source = os.path.basename(pdf_path)
+
+    print(f"Loading text from {pdf_path}...")
+    chunks = load_and_chunk(pdf_path)
+    print(f"Split into {len(chunks)} text chunks")
     add_documents(chunks, source=source)
-    print(f"Stored {len(chunks)} chunks in vector store ({get_doc_count()} total)")
+    print(f"Stored {len(chunks)} text chunks in vector store ({get_doc_count()} total)")
+
+    if ocr_model:
+        captions = process_spore_images(pdf_path, model=ocr_model)
+        if captions:
+            add_documents(captions, source=f"{source}_spore_illustrations")
+            print(f"Stored {len(captions)} image captions in vector store ({get_doc_count()} total)")
+        else:
+            print("No images found in PDF")
+    else:
+        print("Skipping spore illustration OCR (use --ocr-model to enable, e.g. --ocr-model llava)")
 
 
 def ask(question: str, model: str = "llama3.1"):
@@ -50,6 +62,7 @@ def main():
 
     ingest_cmd = sub.add_parser("ingest", help="Ingest a PDF file (Funga Nordica)")
     ingest_cmd.add_argument("pdf_path", help="Path to PDF file")
+    ingest_cmd.add_argument("--ocr-model", default=None, help="Vision model for spore illustration OCR (e.g. llava, llama3.2-vision)")
 
     ask_cmd = sub.add_parser("ask", help="Ask a question about a fungus")
     ask_cmd.add_argument("question", help="Your question")
@@ -61,7 +74,7 @@ def main():
 
     args = parser.parse_args()
     if args.command == "ingest":
-        ingest(args.pdf_path)
+        ingest(args.pdf_path, ocr_model=args.ocr_model)
     elif args.command == "ask":
         ask(args.question, model=args.model)
     elif args.command == "identify":
