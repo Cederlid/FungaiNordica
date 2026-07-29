@@ -11,6 +11,33 @@ from rag.identifier import identify_mushroom
 from rag.ocr import process_spore_images
 
 
+def ingest_all(directory: str, ocr_model: str | None = None):
+    if not os.path.isdir(directory):
+        print(f"Error: Directory not found: {directory}")
+        return
+    pdfs = sorted([f for f in os.listdir(directory) if f.lower().endswith(".pdf")])
+    if not pdfs:
+        print(f"No PDF files found in {directory}")
+        return
+    print(f"Found {len(pdfs)} PDF(s) to ingest\n")
+    for pdf in pdfs:
+        pdf_path = os.path.join(directory, pdf)
+        print(f"[{pdfs.index(pdf)+1}/{len(pdfs)}] Processing {pdf}...")
+        chunks = load_and_chunk(pdf_path)
+        print(f"  {len(chunks)} text chunks")
+        add_documents(chunks, source=pdf)
+        if ocr_model:
+            captions = process_spore_images(pdf_path, model=ocr_model)
+            if captions:
+                add_documents(captions, source=f"{pdf}_spore_illustrations")
+                print(f"  + {len(captions)} image captions")
+                print(f"  Total in store: {get_doc_count()}")
+            else:
+                print(f"  No images found")
+        print()
+    print(f"Done! {get_doc_count()} total documents in vector store")
+
+
 def ingest(pdf_path: str, ocr_model: str | None = None):
     if not os.path.exists(pdf_path):
         print(f"Error: File not found: {pdf_path}")
@@ -60,9 +87,13 @@ def main():
     )
     sub = parser.add_subparsers(dest="command")
 
-    ingest_cmd = sub.add_parser("ingest", help="Ingest a PDF file (Funga Nordica)")
+    ingest_cmd = sub.add_parser("ingest", help="Ingest a single PDF file")
     ingest_cmd.add_argument("pdf_path", help="Path to PDF file")
     ingest_cmd.add_argument("--ocr-model", default=None, help="Vision model for spore illustration OCR (e.g. llava, llama3.2-vision)")
+
+    ingest_all_cmd = sub.add_parser("ingest-all", help="Ingest all PDFs in a directory")
+    ingest_all_cmd.add_argument("directory", help="Directory containing PDF files")
+    ingest_all_cmd.add_argument("--ocr-model", default=None, help="Vision model for spore illustration OCR (e.g. llava, llama3.2-vision)")
 
     ask_cmd = sub.add_parser("ask", help="Ask a question about a fungus")
     ask_cmd.add_argument("question", help="Your question")
@@ -75,6 +106,8 @@ def main():
     args = parser.parse_args()
     if args.command == "ingest":
         ingest(args.pdf_path, ocr_model=args.ocr_model)
+    elif args.command == "ingest-all":
+        ingest_all(args.directory, ocr_model=args.ocr_model)
     elif args.command == "ask":
         ask(args.question, model=args.model)
     elif args.command == "identify":
