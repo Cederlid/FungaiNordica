@@ -3,3 +3,6 @@ chromadb
 pymupdf
 gradio
 ollama
+fastapi
+uvicorn
+Pillow
