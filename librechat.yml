@@ -1,51 +1,16 @@
-version: 1.0.0
-
+version: 1.3.13
 cache: true
-
 interface:
-  version: "1.0.0"
   temp: true
   theme: "dark"
   customFooter: "Powered by FungaiNordica"
-  privacyPolicy: ""
-  termsOfService: ""
-
-registration:
-  allowedDomains: []
-  allowedEmails: []
-  defaultRole: USER
-
 endpoints:
   custom:
     - name: "FungaiNordica"
-      apiKey: ""
+      apiKey: "not-needed"
       baseURL: "http://rag-server:8000/v1"
       models:
         default: ["llama3.1", "identify"]
         fetch: true
-      title: "FungaiNordica"
-      titleIcon: true
-      titleIconUrl: ""
+      titleIcon: false
       modelDisplayLabel: "FungaiNordica"
-      addParams:
-        model: "llama3.1"
-
-  openAI:
-    models:
-      default: []
-    disabled: true
-
-  azureOpenAI:
-    disabled: true
-
-  bingAI:
-    disabled: true
-
-  google:
-    disabled: true
-
-  anthropic:
-    disabled: true
-
-  gptPlugins:
-    disabled: true
