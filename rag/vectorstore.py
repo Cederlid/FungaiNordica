@@ -1,4 +1,5 @@
 import chromadb
+from chromadb.config import Settings
 
 from rag.embeddings import embed_texts, embed_query
 
@@ -9,7 +10,10 @@ _collection = None
 def get_collection(name: str = "pdf_rag"):
     global _client, _collection
     if _collection is None:
-        _client = chromadb.PersistentClient(path="./chroma_db")
+        _client = chromadb.PersistentClient(
+            path="./chroma_db",
+            settings=Settings(anonymized_telemetry=False),
+        )
         _collection = _client.get_or_create_collection(
             name=name,
             metadata={"hnsw:space": "cosine"},

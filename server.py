@@ -28,7 +28,7 @@ class Message(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    model: str = "llama3.1"
+    model: str = "gemma2:2b"
     messages: list[Message]
     stream: bool = False
 
@@ -52,7 +52,7 @@ def list_models():
     return {
         "object": "list",
         "data": [
-            {"id": "llama3.1", "object": "model"},
+            {"id": "gemma2:2b", "object": "model"},
             {"id": "identify", "object": "model"},
         ],
     }
@@ -73,7 +73,7 @@ def chat_completions(req: ChatRequest):
         response_text = "No documents have been ingested yet. Please upload a PDF first."
 
     elif req.model == "identify":
-        response_text = identify_mushroom(user_message, model="llama3.1")
+        response_text = identify_mushroom(user_message, model="gemma2:2b")
 
     else:
         docs = query_documents(user_message)

@@ -1,15 +1,16 @@
 import ollama
 
 
-def generate(prompt: str, model: str = "llama3.1") -> str:
-    response = ollama.generate(model=model, prompt=prompt)
+def generate(prompt: str, model: str = "gemma2:2b") -> str:
+    response = ollama.generate(model=model, prompt=prompt, think=False)
     return response["response"]
 
 
-def rag_answer(question: str, context_docs: list[str], model: str = "llama3.1") -> str:
+def rag_answer(question: str, context_docs: list[str], model: str = "gemma2:2b") -> str:
     context = "\n\n---\n\n".join(context_docs)
     prompt = (
         "You are a mycological expert assistant using the Funga Nordica identification guide.\n"
+        "Answer directly and concisely. Do not show your reasoning or thought process.\n"
         "Answer the question based on the provided context from the book.\n"
         "When describing fungi, reference: spore measurements, macroscopic features (cap, stem, gills), "
         "microscopic features, habitat, and season.\n"
@@ -22,7 +23,7 @@ def rag_answer(question: str, context_docs: list[str], model: str = "llama3.1") 
     return generate(prompt, model=model)
 
 
-def identify(features: str, context_docs: list[str], model: str = "llama3.1") -> str:
+def identify(features: str, context_docs: list[str], model: str = "gemma2:2b") -> str:
     context = "\n\n---\n\n".join(context_docs)
     prompt = (
         "You are a mycological expert assistant using the Funga Nordica identification guide.\n"

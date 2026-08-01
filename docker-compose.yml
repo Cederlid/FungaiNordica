@@ -19,6 +19,9 @@ services:
     volumes:
       - ./chroma_db:/app/chroma_db
       - ./data:/app/data
+      - ./server.py:/app/server.py
+      - ./rag:/app/rag
+      - ~/.cache/huggingface:/root/.cache/huggingface
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
     networks:
