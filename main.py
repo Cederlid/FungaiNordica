@@ -61,7 +61,7 @@ def ingest(pdf_path: str, ocr_model: str | None = None):
         print("Skipping spore illustration OCR (use --ocr-model to enable, e.g. --ocr-model llava)")
 
 
-def ask(question: str, model: str = "gemma2:2b"):
+def ask(question: str, model: str = "gemma4:e4b"):
     if get_doc_count() == 0:
         print("No documents ingested yet. Run: python main.py ingest <pdf_path>")
         return
@@ -72,7 +72,7 @@ def ask(question: str, model: str = "gemma2:2b"):
     print(f"\nAnswer:\n{answer}")
 
 
-def identify(features: str, model: str = "gemma2:2b"):
+def identify(features: str, model: str = "gemma4:e4b"):
     if get_doc_count() == 0:
         print("No documents ingested yet. Run: python main.py ingest <pdf_path>")
         return
@@ -97,11 +97,11 @@ def main():
 
     ask_cmd = sub.add_parser("ask", help="Ask a question about a fungus")
     ask_cmd.add_argument("question", help="Your question")
-    ask_cmd.add_argument("--model", default="gemma2:2b", help="Ollama model name")
+    ask_cmd.add_argument("--model", default="gemma4:e4b", help="Ollama model name")
 
     identify_cmd = sub.add_parser("identify", help="Identify a mushroom from features")
     identify_cmd.add_argument("features", help="Mushroom features (cap, stem, gills, habitat, etc.)")
-    identify_cmd.add_argument("--model", default="gemma2:2b", help="Ollama model name")
+    identify_cmd.add_argument("--model", default="gemma4:e4b", help="Ollama model name")
 
     args = parser.parse_args()
     if args.command == "ingest":

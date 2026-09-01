@@ -1,19 +1,19 @@
 import ollama
 
 
-def generate(prompt: str, model: str = "gemma2:2b") -> str:
+def generate(prompt: str, model: str = "gemma4:e4b") -> str:
     response = ollama.generate(model=model, prompt=prompt, think=False)
     return response["response"]
 
 
-def generate_stream(prompt: str, model: str = "gemma2:2b"):
+def generate_stream(prompt: str, model: str = "gemma4:e4b"):
     for chunk in ollama.generate(model=model, prompt=prompt, stream=True, think=False):
         if chunk["done"]:
             return
         yield chunk["response"]
 
 
-def rag_answer(question: str, context_docs: list[str], model: str = "gemma2:2b") -> str:
+def rag_answer(question: str, context_docs: list[str], model: str = "gemma4:e4b") -> str:
     context = "\n\n---\n\n".join(context_docs)
     prompt = (
         "You are a mycological expert assistant using the Funga Nordica identification guide.\n"
@@ -30,7 +30,7 @@ def rag_answer(question: str, context_docs: list[str], model: str = "gemma2:2b")
     return generate(prompt, model=model)
 
 
-def identify(features: str, context_docs: list[str], model: str = "gemma2:2b") -> str:
+def identify(features: str, context_docs: list[str], model: str = "gemma4:e4b") -> str:
     context = "\n\n---\n\n".join(context_docs)
     prompt = (
         "You are a mycological expert assistant using the Funga Nordica identification guide.\n"

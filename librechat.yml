@@ -10,7 +10,7 @@ endpoints:
       apiKey: "not-needed"
       baseURL: "http://rag-server:8000/v1"
       models:
-        default: ["gemma2:2b", "identify"]
+        default: ["gemma4:e4b", "identify"]
         fetch: true
       titleIcon: false
       modelDisplayLabel: "FungaiNordica"
