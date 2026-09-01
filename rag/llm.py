@@ -6,6 +6,13 @@ def generate(prompt: str, model: str = "gemma2:2b") -> str:
     return response["response"]
 
 
+def generate_stream(prompt: str, model: str = "gemma2:2b"):
+    for chunk in ollama.generate(model=model, prompt=prompt, stream=True, think=False):
+        if chunk["done"]:
+            return
+        yield chunk["response"]
+
+
 def rag_answer(question: str, context_docs: list[str], model: str = "gemma2:2b") -> str:
     context = "\n\n---\n\n".join(context_docs)
     prompt = (

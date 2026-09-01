@@ -7,9 +7,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from rag.vectorstore import query_documents, get_doc_count
-from rag.llm import rag_answer, generate
+from rag.llm import rag_answer, generate, generate_stream
 from rag.identifier import identify_mushroom
 
 app = FastAPI(title="FungaiNordica API")
@@ -85,9 +86,16 @@ def chat_completions(req: ChatRequest):
                 f"Question: {user_message}\n\n"
                 "Answer:"
             )
+            if req.stream:
+                return streaming_response(generate_stream(prompt, model=req.model), req.model)
             response_text = generate(prompt, model=req.model)
         else:
+            if req.stream:
+                return streaming_response(rag_answer_stream(user_message, docs, model=req.model), req.model)
             response_text = rag_answer(user_message, docs, model=req.model)
+
+    if req.stream:
+        return streaming_response(iter([response_text]), req.model)
 
     response = {
         "id": f"chatcmpl-{int(time.time())}",
@@ -111,6 +119,64 @@ def chat_completions(req: ChatRequest):
         },
     }
     return response
+
+
+def streaming_response(text_iter, model: str):
+    def event_stream():
+        completion_id = f"chatcmpl-{int(time.time())}"
+        created = int(time.time())
+        try:
+            for piece in text_iter:
+                chunk = {
+                    "id": completion_id,
+                    "object": "chat.completion.chunk",
+                    "created": created,
+                    "model": model,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"content": piece},
+                            "finish_reason": None,
+                        }
+                    ],
+                }
+                yield f"data: {json.dumps(chunk)}\n\n"
+            final_chunk = {
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {},
+                        "finish_reason": "stop",
+                    }
+                ],
+            }
+            yield f"data: {json.dumps(final_chunk)}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+def rag_answer_stream(question: str, context_docs: list[str], model: str = "gemma2:2b"):
+    context = "\n\n---\n\n".join(context_docs)
+    prompt = (
+        "You are a mycological expert assistant using the Funga Nordica identification guide.\n"
+        "Answer directly and concisely. Do not show your reasoning or thought process.\n"
+        "Answer the question based on the provided context from the book.\n"
+        "When describing fungi, reference: spore measurements, macroscopic features (cap, stem, gills), "
+        "microscopic features, habitat, and season.\n"
+        "If the answer is not fully in the context, say so and indicate what additional information "
+        "would help narrow down the identification.\n\n"
+        f"Context from Funga Nordica:\n{context}\n\n"
+        f"Question: {question}\n\n"
+        "Answer:"
+    )
+    yield from generate_stream(prompt, model=model)
 
 
 if __name__ == "__main__":
