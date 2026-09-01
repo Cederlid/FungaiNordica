@@ -2,6 +2,7 @@ import sys
 import os
 import time
 import json
+import re
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -70,6 +71,17 @@ def chat_completions(req: ChatRequest):
         if msg.role == "system":
             system_prompt = msg.content
 
+    if is_casual(user_message):
+        greeting = (
+            "Hi! I'm your Funga Nordica assistant. I can help identify mushrooms and answer "
+            "questions using the Funga Nordica guide.\n\n"
+            "Try asking things like:\n"
+            "- 'What are the key features of Russula? '\n"
+            "- Describe a mushroom you found and I'll try to identify it.\n\n"
+            "What would you like to know?"
+        )
+        return streaming_response(iter([greeting]), req.model) if req.stream else _json_response(greeting, req)
+
     if get_doc_count() == 0:
         response_text = "No documents have been ingested yet. Please upload a PDF first."
 
@@ -97,7 +109,25 @@ def chat_completions(req: ChatRequest):
     if req.stream:
         return streaming_response(iter([response_text]), req.model)
 
-    response = {
+    return _json_response(response_text, req)
+
+
+def is_casual(message: str) -> bool:
+    text = message.strip().lower()
+    if not text:
+        return False
+    casual = [
+        "hi", "hello", "hey", "yo", "howdy", "good morning", "good afternoon",
+        "good evening", "thanks", "thank you", "thankyou", "no problem",
+        "who are you", "what can you do", "what are you", "help", "how are you",
+    ]
+    if text in casual:
+        return True
+    return bool(re.fullmatch(r"hi+", text))
+
+
+def _json_response(response_text: str, req: ChatRequest):
+    return {
         "id": f"chatcmpl-{int(time.time())}",
         "object": "chat.completion",
         "created": int(time.time()),
@@ -118,7 +148,6 @@ def chat_completions(req: ChatRequest):
             "total_tokens": 0,
         },
     }
-    return response
 
 
 def streaming_response(text_iter, model: str):
