@@ -45,6 +45,7 @@ services:
       - ALLOW_REGISTRATION=true
       - DOMAIN_CLIENT=http://localhost:3080
       - DOMAIN_SERVER=http://localhost:3080
+      - RAG_API_URL=http://rag-server:8000
     volumes:
       - ./librechat.yml:/app/librechat.yaml
       - librechat_images:/app/client/public/images
