@@ -37,29 +37,34 @@ def chunk_text(text: str, chunk_size: int = 800, overlap: int = 100) -> list[str
     current_chunk = []
     current_len = 0
 
+    def flush():
+        nonlocal current_chunk, current_len
+        joined = "\n".join(current_chunk).strip()
+        if joined:
+            chunks.append(joined)
+        current_chunk = []
+        current_len = 0
+
     for line in lines:
         stripped = line.strip()
         if not stripped:
             if current_chunk:
                 current_chunk.append("")
+                current_len += 1
             continue
 
-        if _is_key_step(line) and current_len >= chunk_size:
-            chunks.append("\n".join(current_chunk).strip())
-            overlap_text = "\n".join(current_chunk[-3:])
-            current_chunk = [overlap_text]
-            current_len = len(overlap_text)
-            current_chunk.append(line)
-            current_len += len(line)
-        else:
-            current_chunk.append(line)
-            current_len += len(line) + 1
+        line_len = len(line) + 1
+        if current_len + line_len > chunk_size:
+            flush()
+            # keep overlap from the end of the previous chunk
+            if last_chunk := (chunks[-1] if chunks else ""):
+                tail = last_chunk[-overlap:]
+                current_chunk = [tail]
+                current_len = len(tail)
+        current_chunk.append(line)
+        current_len += line_len
 
-    if current_chunk:
-        remaining = "\n".join(current_chunk).strip()
-        if remaining:
-            chunks.append(remaining)
-
+    flush()
     return [c for c in chunks if len(c) > 30]
 
 

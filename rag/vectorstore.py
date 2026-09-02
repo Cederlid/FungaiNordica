@@ -34,6 +34,20 @@ def add_documents(texts: list[str], source: str = "unknown"):
     )
 
 
+def clear_all(name: str = "pdf_rag"):
+    global _client, _collection
+    _client = chromadb.PersistentClient(
+        path="./chroma_db",
+        settings=Settings(anonymized_telemetry=False),
+    )
+    try:
+        _client.delete_collection(name)
+    except Exception:
+        pass
+    _client = None
+    _collection = None
+
+
 def query_documents(query: str, n_results: int = 4) -> list[str]:
     collection = get_collection()
     query_embedding = embed_query(query)

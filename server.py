@@ -30,7 +30,7 @@ class Message(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    model: str = "gemma4:e4b"
+    model: str = ""
     messages: list[Message]
     stream: bool = False
 
@@ -54,7 +54,7 @@ def list_models():
     return {
         "object": "list",
         "data": [
-            {"id": "gemma4:e4b", "object": "model"},
+            {"id": "gemma4:26b-moe", "object": "model"},
             {"id": "identify", "object": "model"},
         ],
     }
@@ -86,7 +86,7 @@ def chat_completions(req: ChatRequest):
         response_text = "No documents have been ingested yet. Please upload a PDF first."
 
     elif req.model == "identify":
-        response_text = identify_mushroom(user_message, model="gemma4:e4b")
+        response_text = identify_mushroom(user_message)
 
     else:
         docs = query_documents(user_message)
@@ -191,7 +191,7 @@ def streaming_response(text_iter, model: str):
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-def rag_answer_stream(question: str, context_docs: list[str], model: str = "gemma4:e4b"):
+def rag_answer_stream(question: str, context_docs: list[str], model: str = ""):
     context = "\n\n---\n\n".join(context_docs)
     prompt = (
         "You are a mycological expert assistant using the Funga Nordica identification guide.\n"

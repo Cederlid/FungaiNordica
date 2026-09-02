@@ -6,3 +6,5 @@ ollama
 fastapi
 uvicorn
 Pillow
+httpx
+python-dotenv

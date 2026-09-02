@@ -23,7 +23,8 @@ services:
       - ./rag:/app/rag
       - ~/.cache/huggingface:/root/.cache/huggingface
     environment:
-      - OLLAMA_HOST=http://host.docker.internal:11434
+      - REMOTE_API_URL=${REMOTE_API_URL}
+      - REMOTE_API_KEY=${REMOTE_API_KEY}
     networks:
       - fungai-net
     extra_hosts:
