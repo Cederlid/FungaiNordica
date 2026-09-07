@@ -25,27 +25,41 @@ def _is_header(line: str) -> bool:
     """Detect a species / subgenus / section header line (Latin binomial + author)."""
     if not line:
         return False
-    length = len(line)
-    if length > 80 or length < 4:
+    stripped = line.strip()
+    length = len(stripped)
+    if length < 4:
         return False
-    if re.match(r'^\d', line):
+    # Strong signal: genus abbreviation + binomial + author, even on long lines
+    # e.g. "A. xanthodermus Genev.  (Psalliota x. (Genev.) Richon & Roze, ..."
+    abbr_binomial = re.match(
+        r"^[A-Z]\.\s+[a-z\u00C0-\u00FF][a-z\u00C0-\u00FF\-]+\s+"
+        r"(?:\([^)]+\)\s*)?[A-Z\u00C0-\u00FF]",
+        stripped,
+    )
+    if abbr_binomial and not re.search(r"[a-z]\d", stripped):
+        # require an author-like token or a parenthetical author citation
+        if re.search(r"\([A-Z]|\b(?:Fr\.|Genev\.|Romagn\.|Quél\.|Pers\.|Kühner|Sarnari|Moser|Karst\.|Orton|Romell|Gillet|Peck|Bres\.|Sacc\.|Bon)$", stripped):
+            return True
+    if length > 80:
+        return False
+    if re.match(r'^\d', stripped):
         return False
     # Single uppercase genus-level headings like "RUSSULACEAE" or "Russula Pers."
-    if " " not in line and re.match(r'^[A-Z]{3,}$', line):
+    if " " not in stripped and re.match(r'^[A-Z]{3,}$', stripped):
         return True
-    if " " not in line:
+    if " " not in stripped:
         return False
     # Exclude running prose / distribution lines
-    words = line.split()
-    if line.endswith(".") and len(words) >= 6 and not re.search(r"\([A-Z]", line):
+    words = stripped.split()
+    if stripped.endswith(".") and len(words) >= 6 and not re.search(r"\([A-Z]", stripped):
         return False
-    if re.search(r"[a-z]\d", line):
+    if re.search(r"[a-z]\d", stripped):
         return False
     # Contains a parenthetical author citation: (Pers.), (Bull.), (Fr.: Fr.), (Krombh.)
-    if re.search(r"\([A-Z][a-z\u00C0-\u00FF]{1,14}\.?\.?(?::[^)]*)?\)", line):
+    if re.search(r"\([A-Z][a-z\u00C0-\u00FF]{1,14}\.?\.?(?::[^)]*)?\)", stripped):
         return True
     # Short line ending in an author-like token (e.g. "R. delica Fr.", "L. lacunarum Hora")
-    if len(words) <= 5 and _AUTHOR_TOKEN.search(line):
+    if len(words) <= 5 and _AUTHOR_TOKEN.search(stripped):
         return True
     return False
 
