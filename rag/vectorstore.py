@@ -29,19 +29,21 @@ def get_collection(name: str = "pdf_rag"):
     return _collection
 
 
-def _extract_terms(query: str) -> set[str]:
-    """Extract distinctive query terms improved with measurements."""
-    terms = set()
+def _extract_terms(query: str) -> list[str]:
+    """Extract distinctive query terms (measurements + rare words), ordered by strength."""
+    terms = []
     # measurement patterns: "5-6.5 x 3-4 µm", "40-100 mm", "15-30 x 10-20"
     for m in re.finditer(r"\d+(?:[,.]\d+)?[\s\-×xX]+\d+(?:\s*[\-\u2013]\s*\d+)?\s*(?:µm|mm)", query):
-        terms.add(m.group(0).lower())
-    for m in re.finditer(r"\b\d+(?:\s*[\-\u2013]\s*)?\d*\s*(?:µm|mm)\b", query):
-        terms.add(m.group(0).lower())
-    # distinctive words (len >= 5), alpha or latin-ish
-    for w in re.findall(r"[A-Za-z\u00C0-\u00FF]{5,}", query.lower()):
+        terms.append(m.group(0).lower())
+    for m in re.finditer(r"\b\d+[\-\u2013]\d*\s*(?:µm|mm)\b", query):
+        terms.append(m.group(0).lower())
+    # distinctive words (len >= 6), alpha or latin-ish
+    for w in re.findall(r"[A-Za-z\u00C0-\u00FF]{6,}", query.lower()):
         if w not in _STOPWORDS:
-            terms.add(w)
-    return terms
+            terms.append(w)
+    # longest/most distinctive first
+    terms.sort(key=len, reverse=True)
+    return list(dict.fromkeys(terms))
 
 
 def query_documents(query: str, n_results: int = 4) -> list[str]:
@@ -57,20 +59,42 @@ def query_documents(query: str, n_results: int = 4) -> list[str]:
 
     terms = _extract_terms(query)
 
-    scored = []
-    seen = set()
+    # score semantic results, boost by distinctive-term hits
+    pool = {}
     for d, dist in zip(docs, distances):
         norm = d[:200]
-        if norm in seen:
+        if norm in pool:
             continue
-        seen.add(norm)
-        score = -dist  # cosine similarity (higher better)
+        score = -dist
         dl = d.lower()
         hit = sum(1 for t in terms if t in dl)
-        score += hit * 0.15
-        scored.append((score, d))
+        score += hit * 0.2
+        pool[norm] = (score, d)
 
-    scored.sort(key=lambda x: -x[0])
+    # lexical fallback: hard `$contains` for DISTINCTIVE terms reinforces exact matches
+    for t in terms:
+        try:
+            hit_ids = collection.get(where_document={"$contains": t})["ids"]
+        except Exception:
+            continue
+        if not hit_ids:
+            continue
+        distinct = len(hit_ids) <= 12  # rare/selective term -> strong signal
+        boost = 5.0 if distinct else 0.5
+        try:
+            res = collection.query(
+                query_embeddings=[query_embedding],
+                n_results=n_results,
+                where_document={"$contains": t},
+                include=["documents", "distances"],
+            )
+            for d, dist in zip(res["documents"][0], res["distances"][0]):
+                norm = d[:200]
+                pool[norm] = (-dist + boost, d)
+        except Exception:
+            continue
+
+    scored = sorted(pool.values(), key=lambda x: -x[0])
     return [d for _, d in scored[:n_results]]
 
 

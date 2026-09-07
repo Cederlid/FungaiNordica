@@ -97,6 +97,11 @@ def identify(features: str, context_docs: list[str], model: str = "") -> str:
                 "follow-up questions (e.g., spore print color, habitat, cap texture, microscopic features) "
                 "to narrow down the identification using the keys.\n"
                 "4. Reference specific key steps from the context when applicable.\n\n"
+                "Some context is from the book's identification keys. Such text describes a group of "
+                "species (or a key couplet), not a single species. If the quoted description comes from a "
+                "key or covers several species, name the individual species the key leads to (e.g. the "
+                "species whose header appears right after that key text), give the single most likely "
+                "species, and say which features tie it to that species rather than its relatives.\n"
                 "Always mention which key section or species description you are basing your conclusion on."
             ),
         },
