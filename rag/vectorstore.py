@@ -55,7 +55,16 @@ def query_documents(query: str, n_results: int = 4) -> list[str]:
         query_embeddings=[query_embedding],
         n_results=n_results,
     )
-    return results["documents"][0]
+    docs = results["documents"][0]
+    deduped = []
+    seen = set()
+    for d in docs:
+        norm = d[:200]
+        if norm in seen:
+            continue
+        seen.add(norm)
+        deduped.append(d)
+    return deduped
 
 
 def get_doc_count() -> int:
