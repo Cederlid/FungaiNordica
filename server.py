@@ -71,6 +71,11 @@ def chat_completions(req: ChatRequest):
         if msg.role == "system":
             system_prompt = msg.content
 
+    # Build a retrieval anchor from the full user conversation so follow-up
+    # questions ("which species?") keep the original description in focus.
+    user_msgs = [m.content for m in req.messages if m.role == "user" and m.content.strip()]
+    retrieval_query = "\n".join(user_msgs[-3:]) or user_message
+
     if is_casual(user_message):
         greeting = (
             "Hi! I'm your Funga Nordica assistant. I can help identify mushrooms and answer "
@@ -86,10 +91,10 @@ def chat_completions(req: ChatRequest):
         response_text = "No documents have been ingested yet. Please upload a PDF first."
 
     elif req.model == "identify":
-        response_text = identify_mushroom(user_message)
+        response_text = identify_mushroom(retrieval_query)
 
     else:
-        docs = query_documents(user_message)
+        docs = query_documents(retrieval_query)
         if system_prompt:
             context = "\n\n---\n\n".join(docs)
             prompt = (
@@ -196,11 +201,13 @@ def rag_answer_stream(question: str, context_docs: list[str], model: str = ""):
     prompt = (
         "You are a mycological expert assistant using the Funga Nordica identification guide.\n"
         "Answer directly and concisely. Do not show your reasoning or thought process.\n"
-        "Answer the question based on the provided context from the book.\n"
         "When describing fungi, reference: spore measurements, macroscopic features (cap, stem, gills), "
         "microscopic features, habitat, and season.\n"
-        "If the answer is not fully in the context, say so and indicate what additional information "
-        "would help narrow down the identification.\n\n"
+        "If the user describes a fungus, give your best identification (species name with author, "
+        "e.g. 'Agaricus xanthodermus Genev.') when the context supports it, and mention close relatives "
+        "that differ by specific features. If the context includes a key text that resolves to a species, "
+        "name that species. Only say the answer is not in the context if the retrieved text genuinely "
+        "lacks the description.\n\n"
         f"Context from Funga Nordica:\n{context}\n\n"
         f"Question: {question}\n\n"
         "Answer:"
