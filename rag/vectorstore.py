@@ -1,3 +1,4 @@
+import hashlib
 import re
 
 import chromadb
@@ -103,17 +104,32 @@ def get_doc_count() -> int:
     return collection.count()
 
 
-def add_documents(texts: list[str], source: str = "unknown"):
+def _text_id(text: str) -> str:
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()
+
+
+def add_documents(texts: list[str], source: str = "unknown") -> int:
+    """Replace `source`'s chunks, skipping text already stored (e.g. by the full-book PDF).
+
+    Returns the number of chunks actually added.
+    """
     collection = get_collection()
-    embeddings = embed_texts(texts)
-    ids = [f"{source}_{i}" for i in range(len(texts))]
-    metadatas = [{"source": source}] * len(texts)
+    collection.delete(where={"source": source})
+    # content-hash ids dedupe identical chunks within and across sources
+    unique = {_text_id(t): t for t in texts}
+    existing = set(collection.get(ids=list(unique), include=[])["ids"]) if unique else set()
+    new = {i: t for i, t in unique.items() if i not in existing}
+    if not new:
+        return 0
+    ids = list(new)
+    docs = list(new.values())
     collection.add(
-        documents=texts,
-        embeddings=embeddings,
+        documents=docs,
+        embeddings=embed_texts(docs),
         ids=ids,
-        metadatas=metadatas,
+        metadatas=[{"source": source}] * len(docs),
     )
+    return len(docs)
 
 
 def clear_all(name: str = "pdf_rag"):

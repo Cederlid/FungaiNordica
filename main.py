@@ -47,8 +47,8 @@ def ingest(pdf_path: str, ocr_model: str | None = None):
     print(f"Loading text from {pdf_path}...")
     chunks = load_and_chunk(pdf_path)
     print(f"Split into {len(chunks)} text chunks")
-    add_documents(chunks, source=source)
-    print(f"Stored {len(chunks)} text chunks in vector store ({get_doc_count()} total)")
+    added = add_documents(chunks, source=source)
+    print(f"Stored {added} new text chunks in vector store ({get_doc_count()} total)")
 
     if ocr_model:
         captions = process_spore_images(pdf_path, model=ocr_model)
