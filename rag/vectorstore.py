@@ -1,4 +1,5 @@
 import hashlib
+import os
 import re
 import unicodedata
 
@@ -7,6 +8,12 @@ from chromadb.config import Settings
 
 from rag.embeddings import embed_texts, embed_query
 from rag.lexical import BM25, expand_query
+
+# next to the project root, regardless of the working directory (/app/chroma_db in Docker);
+# CHROMA_DB_PATH lets a rebuild write to a separate directory first
+DB_PATH = os.environ.get("CHROMA_DB_PATH") or os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "chroma_db"
+)
 
 _client = None
 _collection = None
@@ -24,7 +31,7 @@ def get_collection(name: str = "pdf_rag"):
     global _client, _collection
     if _collection is None:
         _client = chromadb.PersistentClient(
-            path="./chroma_db",
+            path=DB_PATH,
             settings=Settings(anonymized_telemetry=False),
         )
         _collection = _client.get_or_create_collection(
@@ -128,7 +135,7 @@ def add_documents(chunks: list, source: str = "unknown") -> int:
 def clear_all(name: str = "pdf_rag"):
     global _client, _collection
     _client = chromadb.PersistentClient(
-        path="./chroma_db",
+        path=DB_PATH,
         settings=Settings(anonymized_telemetry=False),
     )
     try:
