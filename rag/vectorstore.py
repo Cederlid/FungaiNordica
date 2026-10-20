@@ -73,8 +73,14 @@ def query_documents(query: str, n_results: int = 4) -> list[str]:
 
     # lexical fallback: hard `$contains` for DISTINCTIVE terms reinforces exact matches
     for t in terms:
+        # `$contains` is case-sensitive; genus names are capitalized in the book
+        variants = list(dict.fromkeys([t, t.capitalize()]))
+        if len(variants) == 1:
+            where_document = {"$contains": t}
+        else:
+            where_document = {"$or": [{"$contains": v} for v in variants]}
         try:
-            hit_ids = collection.get(where_document={"$contains": t}, include=[])["ids"]
+            hit_ids = collection.get(where_document=where_document, include=[])["ids"]
         except Exception:
             continue
         if not hit_ids:
@@ -85,7 +91,7 @@ def query_documents(query: str, n_results: int = 4) -> list[str]:
             res = collection.query(
                 query_embeddings=[query_embedding],
                 n_results=n_results,
-                where_document={"$contains": t},
+                where_document=where_document,
                 include=["documents", "distances"],
             )
             for d, dist in zip(res["documents"][0], res["distances"][0]):
