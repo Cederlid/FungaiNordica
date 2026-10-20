@@ -15,7 +15,8 @@ services:
     container_name: fungai-rag-server
     restart: always
     ports:
-      - "8000:8000"
+      # localhost only: LibreChat reaches the API over fungai-net
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./chroma_db:/app/chroma_db
       - ./data:/app/data
