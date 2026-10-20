@@ -36,7 +36,7 @@ services:
     container_name: fungai-librechat
     restart: always
     ports:
-      - "3080:3080"
+      - "127.0.0.1:3080:3080"
     depends_on:
       - mongodb
       - rag-server
