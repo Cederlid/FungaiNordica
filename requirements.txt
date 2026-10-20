@@ -1,10 +1,12 @@
-sentence-transformers
-chromadb
-pymupdf
-gradio
-ollama
-fastapi
-uvicorn
-Pillow
-httpx
-python-dotenv
+# pinned to the versions the local chroma_db was built and tested with;
+# chromadb in particular must match, since Docker and local runs share chroma_db
+sentence-transformers==5.6.1
+chromadb==1.5.9
+pymupdf==1.25.5
+gradio==6.20.0
+ollama==0.6.2
+fastapi==0.140.13
+uvicorn==0.52.0
+Pillow==12.1.0
+httpx==0.28.1
+python-dotenv==1.1.1
