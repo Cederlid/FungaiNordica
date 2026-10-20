@@ -49,26 +49,33 @@ def _lexical_index():
     collection = get_collection()
     count = collection.count()
     if _bm25 is None or _bm25[0] != count:
-        got = collection.get(include=["documents"])
-        _bm25 = (count, got["ids"], got["documents"], BM25(got["documents"]))
+        got = collection.get(include=["documents", "metadatas"])
+        _bm25 = (count, got["ids"], list(zip(got["documents"], got["metadatas"])), BM25(got["documents"]))
     return _bm25
 
 
 def query_documents(query: str, n_results: int = 4) -> list[str]:
-    """Hybrid search: embedding ranking + BM25 ranking, merged by reciprocal rank fusion."""
+    return [text for text, _ in query_chunks(query, n_results)]
+
+
+def query_chunks(query: str, n_results: int = 4) -> list[tuple[str, dict]]:
+    """Hybrid search: embedding ranking + BM25 ranking, merged by reciprocal rank fusion.
+
+    Returns (text, metadata) pairs.
+    """
     # the book text is NFKC-normalized at ingest (ligatures, µ -> μ); match it
     query = expand_query(unicodedata.normalize("NFKC", query))
     collection = get_collection()
     if collection.count() == 0:
         return []
-    _, ids, docs, bm25 = _lexical_index()
-    by_id = dict(zip(ids, docs))
+    _, ids, chunks, bm25 = _lexical_index()
+    by_id = dict(zip(ids, chunks))
 
     sem = collection.query(query_embeddings=[embed_query(query)], n_results=_POOL, include=[])["ids"][0]
     rankings = [(_W_SEM, sem), (_W_BM25, [ids[i] for i in bm25.top(query, _POOL)])]
     # exact measurements are a strong signal; rank those chunks by the semantic order
     for term in _measurements(query):
-        hit = [i for i, d in by_id.items() if term in d]
+        hit = [i for i, (d, _) in by_id.items() if term in d]
         if hit:
             order = {i: r for r, i in enumerate(sem)}
             rankings.append((_W_MEASURE, sorted(hit, key=lambda i: order.get(i, _POOL))))
