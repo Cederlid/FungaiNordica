@@ -42,9 +42,9 @@ services:
       - rag-server
     environment:
       - MONGO_URI=mongodb://mongodb:27017/librechat
-      - JWT_SECRET=REDACTED
-      - JWT_REFRESH_SECRET=REDACTED
-      - ALLOW_REGISTRATION=true
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in .env}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET in .env}
+      - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-false}
       - DOMAIN_CLIENT=http://localhost:3080
       - DOMAIN_SERVER=http://localhost:3080
       - RAG_API_URL=http://rag-server:8000
