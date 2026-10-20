@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from rag.vectorstore import query_documents, get_doc_count
-from rag.llm import rag_answer, generate, generate_stream
+from rag.llm import rag_answer, rag_answer_stream, generate, generate_stream
 from rag.identifier import identify_mushroom
 
 app = FastAPI(title="FungaiNordica API")
@@ -194,25 +194,6 @@ def streaming_response(text_iter, model: str):
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
-
-
-def rag_answer_stream(question: str, context_docs: list[str], model: str = ""):
-    context = "\n\n---\n\n".join(context_docs)
-    prompt = (
-        "You are a mycological expert assistant using the Funga Nordica identification guide.\n"
-        "Answer directly and concisely. Do not show your reasoning or thought process.\n"
-        "When describing fungi, reference: spore measurements, macroscopic features (cap, stem, gills), "
-        "microscopic features, habitat, and season.\n"
-        "If the user describes a fungus, give your best identification (species name with author, "
-        "e.g. 'Agaricus xanthodermus Genev.') when the context supports it, and mention close relatives "
-        "that differ by specific features. If the context includes a key text that resolves to a species, "
-        "name that species. Only say the answer is not in the context if the retrieved text genuinely "
-        "lacks the description.\n\n"
-        f"Context from Funga Nordica:\n{context}\n\n"
-        f"Question: {question}\n\n"
-        "Answer:"
-    )
-    yield from generate_stream(prompt, model=model)
 
 
 if __name__ == "__main__":
