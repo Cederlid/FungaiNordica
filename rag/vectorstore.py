@@ -63,19 +63,18 @@ def query_documents(query: str, n_results: int = 4) -> list[str]:
     # score semantic results, boost by distinctive-term hits
     pool = {}
     for d, dist in zip(docs, distances):
-        norm = d[:200]
-        if norm in pool:
+        if d in pool:
             continue
         score = -dist
         dl = d.lower()
         hit = sum(1 for t in terms if t in dl)
         score += hit * 0.2
-        pool[norm] = (score, d)
+        pool[d] = score
 
     # lexical fallback: hard `$contains` for DISTINCTIVE terms reinforces exact matches
     for t in terms:
         try:
-            hit_ids = collection.get(where_document={"$contains": t})["ids"]
+            hit_ids = collection.get(where_document={"$contains": t}, include=[])["ids"]
         except Exception:
             continue
         if not hit_ids:
@@ -90,13 +89,12 @@ def query_documents(query: str, n_results: int = 4) -> list[str]:
                 include=["documents", "distances"],
             )
             for d, dist in zip(res["documents"][0], res["distances"][0]):
-                norm = d[:200]
-                pool[norm] = (-dist + boost, d)
+                pool[d] = max(pool.get(d, float("-inf")), -dist + boost)
         except Exception:
             continue
 
-    scored = sorted(pool.values(), key=lambda x: -x[0])
-    return [d for _, d in scored[:n_results]]
+    scored = sorted(pool.items(), key=lambda x: -x[1])
+    return [d for d, _ in scored[:n_results]]
 
 
 def get_doc_count() -> int:
