@@ -6,15 +6,18 @@ import chromadb
 from chromadb.config import Settings
 
 from rag.embeddings import embed_texts, embed_query
+from rag.lexical import BM25, expand_query
 
 _client = None
 _collection = None
 
-_STOPWORDS = {
-    "the", "a", "an", "is", "are", "and", "or", "of", "to", "in", "on", "with",
-    "for", "from", "at", "by", "into", "how", "what", "when", "which", "it", "its",
-    "this", "that", "cap", "stem", "gills", "flesh", "species", "does", "not",
-}
+_RRF_K = 60  # reciprocal-rank-fusion constant
+_POOL = 100  # candidates taken from each ranker
+# BM25 dominates: the embedding model barely separates the book's terse species
+# descriptions, but still helps with paraphrases (tuned on eval_retrieval.py)
+_W_SEM, _W_BM25, _W_MEASURE = 1.0, 3.0, 3.0
+
+_bm25 = None  # (doc count, ids, docs, BM25) cache, rebuilt when the collection changes
 
 
 def get_collection(name: str = "pdf_rag"):
@@ -31,79 +34,51 @@ def get_collection(name: str = "pdf_rag"):
     return _collection
 
 
-def _extract_terms(query: str) -> list[str]:
-    """Extract distinctive query terms (measurements + rare words), ordered by strength."""
+def _measurements(query: str) -> list[str]:
+    """Measurement strings to match verbatim: "8-10 x 6-7 μm", "40-100 mm"."""
     terms = []
-    # measurement patterns: "5-6.5 x 3-4 µm", "40-100 mm", "15-30 x 10-20"
     for m in re.finditer(r"\d+(?:[,.]\d+)?[\s\-×xX]+\d+(?:\s*[\-\u2013]\s*\d+)?\s*(?:μm|mm)", query):
-        terms.append(m.group(0).lower())
+        terms.append(m.group(0))
     for m in re.finditer(r"\b\d+[\-\u2013]\d*\s*(?:μm|mm)\b", query):
-        terms.append(m.group(0).lower())
-    # distinctive words (len >= 6), alpha or latin-ish
-    for w in re.findall(r"[A-Za-z\u00C0-\u00FF]{6,}", query.lower()):
-        if w not in _STOPWORDS:
-            terms.append(w)
-    # longest/most distinctive first
-    terms.sort(key=len, reverse=True)
+        terms.append(m.group(0))
     return list(dict.fromkeys(terms))
 
 
-def query_documents(query: str, n_results: int = 4) -> list[str]:
-    # the book text is NFKC-normalized at ingest (ligatures, µ -> μ); match it
-    query = unicodedata.normalize("NFKC", query)
+def _lexical_index():
+    global _bm25
     collection = get_collection()
-    query_embedding = embed_query(query)
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=max(n_results * 5, 20),
-        include=["documents", "distances"],
-    )
-    docs = results["documents"][0]
-    distances = results["distances"][0]
+    count = collection.count()
+    if _bm25 is None or _bm25[0] != count:
+        got = collection.get(include=["documents"])
+        _bm25 = (count, got["ids"], got["documents"], BM25(got["documents"]))
+    return _bm25
 
-    terms = _extract_terms(query)
 
-    # score semantic results, boost by distinctive-term hits
-    pool = {}
-    for d, dist in zip(docs, distances):
-        if d in pool:
-            continue
-        score = -dist
-        dl = d.lower()
-        hit = sum(1 for t in terms if t in dl)
-        score += hit * 0.2
-        pool[d] = score
+def query_documents(query: str, n_results: int = 4) -> list[str]:
+    """Hybrid search: embedding ranking + BM25 ranking, merged by reciprocal rank fusion."""
+    # the book text is NFKC-normalized at ingest (ligatures, µ -> μ); match it
+    query = expand_query(unicodedata.normalize("NFKC", query))
+    collection = get_collection()
+    if collection.count() == 0:
+        return []
+    _, ids, docs, bm25 = _lexical_index()
+    by_id = dict(zip(ids, docs))
 
-    # lexical fallback: hard `$contains` for DISTINCTIVE terms reinforces exact matches
-    for t in terms:
-        # `$contains` is case-sensitive; genus names are capitalized in the book
-        variants = list(dict.fromkeys([t, t.capitalize()]))
-        if len(variants) == 1:
-            where_document = {"$contains": t}
-        else:
-            where_document = {"$or": [{"$contains": v} for v in variants]}
-        try:
-            hit_ids = collection.get(where_document=where_document, include=[])["ids"]
-        except Exception:
-            continue
-        if not hit_ids:
-            continue
-        distinct = len(hit_ids) <= 12  # rare/selective term -> strong signal
-        boost = 5.0 if distinct else 0.5
-        try:
-            res = collection.query(
-                query_embeddings=[query_embedding],
-                n_results=n_results,
-                where_document=where_document,
-                include=["documents", "distances"],
-            )
-            for d, dist in zip(res["documents"][0], res["distances"][0]):
-                pool[d] = max(pool.get(d, float("-inf")), -dist + boost)
-        except Exception:
-            continue
+    sem = collection.query(query_embeddings=[embed_query(query)], n_results=_POOL, include=[])["ids"][0]
+    rankings = [(_W_SEM, sem), (_W_BM25, [ids[i] for i in bm25.top(query, _POOL)])]
+    # exact measurements are a strong signal; rank those chunks by the semantic order
+    for term in _measurements(query):
+        hit = [i for i, d in by_id.items() if term in d]
+        if hit:
+            order = {i: r for r, i in enumerate(sem)}
+            rankings.append((_W_MEASURE, sorted(hit, key=lambda i: order.get(i, _POOL))))
 
-    scored = sorted(pool.items(), key=lambda x: -x[1])
-    return [d for d, _ in scored[:n_results]]
+    scores = {}
+    for weight, ranking in rankings:
+        for rank, i in enumerate(ranking):
+            scores[i] = scores.get(i, 0.0) + weight / (_RRF_K + rank + 1)
+    best = sorted(scores, key=scores.get, reverse=True)[:n_results]
+    return [by_id[i] for i in best]
 
 
 def get_doc_count() -> int:
