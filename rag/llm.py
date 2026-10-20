@@ -102,26 +102,27 @@ def generate_stream(prompt: str, model: str = ""):
     yield from _stream([{"role": "user", "content": prompt}], model=model)
 
 
-def _rag_messages(question: str, context_docs: list[str]) -> list[dict]:
+def _messages(system: str, history, final: str) -> list[dict]:
+    """System prompt, earlier conversation turns, then the context-bearing final message."""
+    turns = [{"role": m["role"], "content": m["content"]} for m in history
+             if m.get("role") in ("user", "assistant") and m.get("content")]
+    return [{"role": "system", "content": system}, *turns, {"role": "user", "content": final}]
+
+
+def _rag_messages(question: str, context_docs: list[str], history=(), system: str = RAG_SYSTEM) -> list[dict]:
     context = "\n\n---\n\n".join(context_docs)
-    return [
-        {"role": "system", "content": RAG_SYSTEM},
-        {"role": "user", "content": f"Context from Funga Nordica:\n{context}\n\nQuestion: {question}"},
-    ]
+    return _messages(system, history, f"Context from Funga Nordica:\n{context}\n\nQuestion: {question}")
 
 
-def rag_answer(question: str, context_docs: list[str], model: str = "") -> str:
-    return _complete(_rag_messages(question, context_docs), model=model)
+def rag_answer(question: str, context_docs: list[str], model: str = "", history=(), system: str = RAG_SYSTEM) -> str:
+    return _complete(_rag_messages(question, context_docs, history, system), model=model)
 
 
-def rag_answer_stream(question: str, context_docs: list[str], model: str = ""):
-    yield from _stream(_rag_messages(question, context_docs), model=model)
+def rag_answer_stream(question: str, context_docs: list[str], model: str = "", history=(), system: str = RAG_SYSTEM):
+    yield from _stream(_rag_messages(question, context_docs, history, system), model=model)
 
 
-def identify(features: str, context_docs: list[str], model: str = "") -> str:
+def identify(features: str, context_docs: list[str], model: str = "", history=()) -> str:
     context = "\n\n---\n\n".join(context_docs)
-    messages = [
-        {"role": "system", "content": IDENTIFY_SYSTEM},
-        {"role": "user", "content": f"Context from Funga Nordica:\n{context}\n\nMushroom features:\n{features}"},
-    ]
-    return _complete(messages, model=model)
+    final = f"Context from Funga Nordica:\n{context}\n\nMushroom features:\n{features}"
+    return _complete(_messages(IDENTIFY_SYSTEM, history, final), model=model)

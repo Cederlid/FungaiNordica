@@ -24,5 +24,8 @@ def identification_context(features: str, n_results: int = 8) -> list[str]:
     return docs
 
 
-def identify_mushroom(features: str, n_results: int = 8, model: str = "") -> str:
-    return llm_identify(features, identification_context(features, n_results), model=model)
+def identify_mushroom(features: str, n_results: int = 8, model: str = "", history=(),
+                      retrieval_query: str | None = None) -> str:
+    """`history` holds earlier chat turns; `retrieval_query` defaults to `features`."""
+    docs = identification_context(retrieval_query or features, n_results)
+    return llm_identify(features, docs, model=model, history=history)

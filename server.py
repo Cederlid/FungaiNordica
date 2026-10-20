@@ -11,8 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from rag.vectorstore import query_documents, get_doc_count
-from rag.llm import rag_answer, rag_answer_stream, generate, generate_stream
+from rag.llm import RAG_SYSTEM, rag_answer, rag_answer_stream
 from rag.identifier import identify_mushroom
+
+_HISTORY_TURNS = 8  # earlier user/assistant messages passed to the model
 
 app = FastAPI(title="FungaiNordica API")
 
@@ -75,6 +77,9 @@ def chat_completions(req: ChatRequest):
     # questions ("which species?") keep the original description in focus.
     user_msgs = [m.content for m in req.messages if m.role == "user" and m.content.strip()]
     retrieval_query = "\n".join(user_msgs[-3:]) or user_message
+    # earlier turns go to the model so it remembers its own follow-up questions
+    history = [{"role": m.role, "content": m.content} for m in req.messages[:-1]
+               if m.role in ("user", "assistant")][-_HISTORY_TURNS:]
 
     if is_casual(user_message):
         greeting = (
@@ -91,25 +96,17 @@ def chat_completions(req: ChatRequest):
         response_text = "No documents have been ingested yet. Please upload a PDF first."
 
     elif req.model == "identify":
-        response_text = identify_mushroom(retrieval_query)
+        response_text = identify_mushroom(user_message, history=history, retrieval_query=retrieval_query)
 
     else:
         docs = query_documents(retrieval_query)
-        if system_prompt:
-            context = "\n\n---\n\n".join(docs)
-            prompt = (
-                f"{system_prompt}\n\n"
-                f"Context from Funga Nordica:\n{context}\n\n"
-                f"Question: {user_message}\n\n"
-                "Answer:"
+        # a system prompt set in LibreChat replaces the default one
+        system = system_prompt or RAG_SYSTEM
+        if req.stream:
+            return streaming_response(
+                rag_answer_stream(user_message, docs, model=req.model, history=history, system=system), req.model
             )
-            if req.stream:
-                return streaming_response(generate_stream(prompt, model=req.model), req.model)
-            response_text = generate(prompt, model=req.model)
-        else:
-            if req.stream:
-                return streaming_response(rag_answer_stream(user_message, docs, model=req.model), req.model)
-            response_text = rag_answer(user_message, docs, model=req.model)
+        response_text = rag_answer(user_message, docs, model=req.model, history=history, system=system)
 
     if req.stream:
         return streaming_response(iter([response_text]), req.model)
