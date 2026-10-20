@@ -15,7 +15,12 @@ def ingest_all(directory: str, ocr_model: str | None = None):
     if not os.path.isdir(directory):
         print(f"Error: Directory not found: {directory}")
         return
-    pdfs = sorted([f for f in os.listdir(directory) if f.lower().endswith(".pdf")])
+    # smallest first: per-genus PDFs keep their source label, and the full-book PDF
+    # only adds what they don't already contain
+    pdfs = sorted(
+        (f for f in os.listdir(directory) if f.lower().endswith(".pdf")),
+        key=lambda f: (os.path.getsize(os.path.join(directory, f)), f),
+    )
     if not pdfs:
         print(f"No PDF files found in {directory}")
         return
@@ -24,8 +29,8 @@ def ingest_all(directory: str, ocr_model: str | None = None):
         pdf_path = os.path.join(directory, pdf)
         print(f"[{pdfs.index(pdf)+1}/{len(pdfs)}] Processing {pdf}...")
         chunks = load_and_chunk(pdf_path)
-        print(f"  {len(chunks)} text chunks")
-        add_documents(chunks, source=pdf)
+        added = add_documents(chunks, source=pdf)
+        print(f"  {len(chunks)} text chunks, {added} new")
         if ocr_model:
             captions = process_spore_images(pdf_path, model=ocr_model)
             if captions:

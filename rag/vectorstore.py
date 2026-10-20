@@ -1,5 +1,6 @@
 import hashlib
 import re
+import unicodedata
 
 import chromadb
 from chromadb.config import Settings
@@ -34,9 +35,9 @@ def _extract_terms(query: str) -> list[str]:
     """Extract distinctive query terms (measurements + rare words), ordered by strength."""
     terms = []
     # measurement patterns: "5-6.5 x 3-4 µm", "40-100 mm", "15-30 x 10-20"
-    for m in re.finditer(r"\d+(?:[,.]\d+)?[\s\-×xX]+\d+(?:\s*[\-\u2013]\s*\d+)?\s*(?:µm|mm)", query):
+    for m in re.finditer(r"\d+(?:[,.]\d+)?[\s\-×xX]+\d+(?:\s*[\-\u2013]\s*\d+)?\s*(?:μm|mm)", query):
         terms.append(m.group(0).lower())
-    for m in re.finditer(r"\b\d+[\-\u2013]\d*\s*(?:µm|mm)\b", query):
+    for m in re.finditer(r"\b\d+[\-\u2013]\d*\s*(?:μm|mm)\b", query):
         terms.append(m.group(0).lower())
     # distinctive words (len >= 6), alpha or latin-ish
     for w in re.findall(r"[A-Za-z\u00C0-\u00FF]{6,}", query.lower()):
@@ -48,6 +49,8 @@ def _extract_terms(query: str) -> list[str]:
 
 
 def query_documents(query: str, n_results: int = 4) -> list[str]:
+    # the book text is NFKC-normalized at ingest (ligatures, µ -> μ); match it
+    query = unicodedata.normalize("NFKC", query)
     collection = get_collection()
     query_embedding = embed_query(query)
     results = collection.query(
@@ -112,26 +115,30 @@ def _text_id(text: str) -> str:
     return hashlib.sha1(text.encode("utf-8")).hexdigest()
 
 
-def add_documents(texts: list[str], source: str = "unknown") -> int:
+def add_documents(chunks: list, source: str = "unknown") -> int:
     """Replace `source`'s chunks, skipping text already stored (e.g. by the full-book PDF).
 
-    Returns the number of chunks actually added.
+    `chunks` holds plain strings or {"text": ..., "meta": {...}} dicts from the
+    PDF parser. Returns the number of chunks actually added.
     """
     collection = get_collection()
     collection.delete(where={"source": source})
     # content-hash ids dedupe identical chunks within and across sources
-    unique = {_text_id(t): t for t in texts}
+    unique = {}
+    for c in chunks:
+        text, meta = (c, {}) if isinstance(c, str) else (c["text"], c.get("meta", {}))
+        unique.setdefault(_text_id(text), (text, {**meta, "source": source}))
     existing = set(collection.get(ids=list(unique), include=[])["ids"]) if unique else set()
-    new = {i: t for i, t in unique.items() if i not in existing}
+    new = {i: v for i, v in unique.items() if i not in existing}
     if not new:
         return 0
     ids = list(new)
-    docs = list(new.values())
+    docs = [t for t, _ in new.values()]
     collection.add(
         documents=docs,
         embeddings=embed_texts(docs),
         ids=ids,
-        metadatas=[{"source": source}] * len(docs),
+        metadatas=[m for _, m in new.values()],
     )
     return len(docs)
 
