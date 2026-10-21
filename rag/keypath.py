@@ -11,6 +11,20 @@ _MAX_STEPS = 40
 _LEAD_CHARS = 160  # species-description leads are long; the start holds the key character
 
 _cache = None  # (doc count, couplets)
+_species_cache = None  # (doc count, {species name: (first description chunk, metadata)})
+
+
+def species_index(collection) -> dict:
+    """Species name -> (description text, metadata), for species named as key targets."""
+    global _species_cache
+    count = collection.count()
+    if _species_cache is None or _species_cache[0] != count:
+        got = collection.get(where={"kind": "species"}, include=["documents", "metadatas"])
+        index = {}
+        for text, m in zip(got["documents"], got["metadatas"]):
+            index.setdefault(m["species"], (text, m))
+        _species_cache = (count, index)
+    return _species_cache[1]
 
 
 def _couplets(collection) -> list[dict]:
