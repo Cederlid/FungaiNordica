@@ -26,6 +26,7 @@ services:
     environment:
       - REMOTE_API_URL=${REMOTE_API_URL}
       - REMOTE_API_KEY=${REMOTE_API_KEY}
+      - LLM_THINKING=${LLM_THINKING:-0}
     networks:
       - fungai-net
     extra_hosts:

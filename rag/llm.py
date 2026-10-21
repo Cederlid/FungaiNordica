@@ -14,6 +14,10 @@ REMOTE_API_URL = os.environ.get(
     "REMOTE_API_URL", "https://demo-api.anghammar.com/v1/chat/completions"
 )
 REMOTE_API_KEY = os.environ.get("REMOTE_API_KEY", "")
+# The model's reasoning phase (Qwen3-style chat templates) is off by default: on
+# eval_identify.py it made identify answers 3-4x slower (median 214 s vs ~60 s)
+# without being more accurate. LLM_THINKING=1 turns it back on.
+THINKING = os.environ.get("LLM_THINKING", "0") == "1"
 
 
 def _chat(messages: list[dict], stream: bool = False, model: str = ""):
@@ -24,6 +28,8 @@ def _chat(messages: list[dict], stream: bool = False, model: str = ""):
         "Authorization": f"Bearer {REMOTE_API_KEY}",
     }
     body = {"messages": messages, "stream": stream}
+    if not THINKING:
+        body["chat_template_kwargs"] = {"enable_thinking": False}
     if model:
         body["model"] = model
     if stream:
@@ -65,7 +71,9 @@ IDENTIFY_SYSTEM = (
     "features tie it to that species rather than its relatives.\n"
     "The book abbreviates: Frb = fruitbody, Sp = spores ('Sp deposit' = spore print), "
     "sp. / spp. = species; explain abbreviations when the user may not know them.\n"
-    "Always mention which key section or species description you are basing your conclusion on."
+    "Always mention which key section or species description you are basing your conclusion on.\n"
+    "Begin your answer with one line 'Most likely: <Genus species>' (or 'Most likely: uncertain'). "
+    "Keep the answer under about 300 words unless the user asks for more detail."
 )
 
 
