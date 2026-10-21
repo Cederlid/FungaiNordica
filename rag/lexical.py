@@ -102,6 +102,8 @@ _MORPH = {
     "floury": "farinaceous", "peppery": "acrid", "hot": "acrid", "stumps": "wood", "roadsides": "roadsides",
     "roads": "roadsides", "conifers": "coniferous", "conifer": "coniferous", "lawns": "grass lawns",
     "meadows": "grassland meadows", "pointed": "umbo umbonate papilla", "umbo": "umbonate",
+    "lawn": "grass lawns", "grass": "grassland lawns meadows", "grassy": "grassland lawns meadows",
+    "park": "parks lawns grassland", "parks": "parks lawns grassland",
 }
 
 # common English and Swedish names -> Funga Nordica names; matched as phrases
