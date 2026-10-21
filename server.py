@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from rag.vectorstore import query_documents, get_doc_count
 from rag.llm import RAG_SYSTEM, rag_answer, rag_answer_stream
-from rag.identifier import identify_mushroom
+from rag.identifier import identify_mushroom, identify_mushroom_stream
 
 _HISTORY_TURNS = 8  # earlier user/assistant messages passed to the model
 
@@ -96,6 +96,10 @@ def chat_completions(req: ChatRequest):
         response_text = "No documents have been ingested yet. Please upload a PDF first."
 
     elif req.model == "identify":
+        if req.stream:
+            return streaming_response(
+                identify_mushroom_stream(user_message, history=history, retrieval_query=retrieval_query), req.model
+            )
         response_text = identify_mushroom(user_message, history=history, retrieval_query=retrieval_query)
 
     else:

@@ -1,6 +1,6 @@
 from rag.keypath import key_path
 from rag.vectorstore import get_collection, query_chunks
-from rag.llm import identify as llm_identify
+from rag.llm import identify as llm_identify, identify_stream as llm_identify_stream
 
 _MAX_CANDIDATES = 4
 
@@ -29,3 +29,9 @@ def identify_mushroom(features: str, n_results: int = 8, model: str = "", histor
     """`history` holds earlier chat turns; `retrieval_query` defaults to `features`."""
     docs = identification_context(retrieval_query or features, n_results)
     return llm_identify(features, docs, model=model, history=history)
+
+
+def identify_mushroom_stream(features: str, n_results: int = 8, model: str = "", history=(),
+                             retrieval_query: str | None = None):
+    docs = identification_context(retrieval_query or features, n_results)
+    yield from llm_identify_stream(features, docs, model=model, history=history)

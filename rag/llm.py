@@ -70,9 +70,10 @@ IDENTIFY_SYSTEM = (
 
 
 def _complete(messages: list[dict], model: str = "") -> str:
-    resp = _chat(messages, stream=False, model=model)
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"]
+    # always stream from the API: a reasoning model can think for minutes before the
+    # first answer token, and the proxy in front of it drops requests that send
+    # nothing for 100 s (HTTP 524); streamed reasoning tokens keep the line alive
+    return "".join(_stream(messages, model=model))
 
 
 def _stream(messages: list[dict], model: str = ""):
@@ -122,7 +123,15 @@ def rag_answer_stream(question: str, context_docs: list[str], model: str = "", h
     yield from _stream(_rag_messages(question, context_docs, history, system), model=model)
 
 
-def identify(features: str, context_docs: list[str], model: str = "", history=()) -> str:
+def _identify_messages(features: str, context_docs: list[str], history=()) -> list[dict]:
     context = "\n\n---\n\n".join(context_docs)
     final = f"Context from Funga Nordica:\n{context}\n\nMushroom features:\n{features}"
-    return _complete(_messages(IDENTIFY_SYSTEM, history, final), model=model)
+    return _messages(IDENTIFY_SYSTEM, history, final)
+
+
+def identify(features: str, context_docs: list[str], model: str = "", history=()) -> str:
+    return _complete(_identify_messages(features, context_docs, history), model=model)
+
+
+def identify_stream(features: str, context_docs: list[str], model: str = "", history=()):
+    yield from _stream(_identify_messages(features, context_docs, history), model=model)
