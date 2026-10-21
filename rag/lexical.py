@@ -88,12 +88,95 @@ def tokenize(text: str) -> list[str]:
     return [_stem(t) for t in _TOKEN.findall(text.lower()) if t not in _STOP and len(t) > 1]
 
 
+# field-guide wording -> the book's wording for the same character
+_MORPH = {
+    "wart": "veil fragments patches", "warts": "veil fragments patches", "warty": "veil fragments patches",
+    "bulbous": "bulb", "bulb": "bulbous", "net": "reticulum reticulate", "netted": "reticulum reticulate",
+    "network": "reticulum reticulate", "shaggy": "scaly fibrillose", "ink": "deliquescent",
+    "inky": "deliquescent", "dissolves": "deliquescent", "dissolving": "deliquescent",
+    "clustered": "caespitose fasciculate", "cluster": "caespitose fasciculate",
+    "clusters": "caespitose fasciculate", "tufted": "caespitose fasciculate",
+    "slimy": "viscid glutinous", "sticky": "viscid glutinous", "slippery": "viscid glutinous",
+    "velvety": "tomentose", "woolly": "tomentose villose", "hairy": "tomentose villose",
+    "pores": "tubes", "funnel": "infundibuliform", "radish": "raphanoid", "mealy": "farinaceous",
+    "floury": "farinaceous", "peppery": "acrid", "hot": "acrid", "stumps": "wood", "roadsides": "roadsides",
+    "roads": "roadsides", "conifers": "coniferous", "conifer": "coniferous", "lawns": "grass lawns",
+    "meadows": "grassland meadows", "pointed": "umbo umbonate papilla", "umbo": "umbonate",
+}
+
+# common English and Swedish names -> Funga Nordica names; matched as phrases
+_NAMES = {
+    "fly agaric": "Amanita muscaria", "panther cap": "Amanita pantherina", "death cap": "Amanita phalloides",
+    "destroying angel": "Amanita virosa", "blusher": "Amanita rubescens", "tawny grisette": "Amanita fulva",
+    "false death cap": "Amanita citrina", "penny bun": "Boletus edulis", "porcini": "Boletus edulis",
+    "king bolete": "Boletus edulis", "bitter bolete": "Tylopilus felleus", "slippery jack": "Suillus luteus",
+    "weeping bolete": "Suillus granulatus", "larch bolete": "Suillus grevillei",
+    "orange birch bolete": "Leccinum versipelle", "brown birch bolete": "Leccinum scabrum",
+    "false chanterelle": "Hygrophoropsis aurantiaca", "honey fungus": "Armillaria",
+    "amethyst deceiver": "Laccaria amethystina", "the deceiver": "Laccaria laccata",
+    "clouded agaric": "Clitocybe nebularis", "clouded funnel": "Clitocybe nebularis",
+    "trooping funnel": "Infundibulicybe geotropa", "aniseed funnel": "Clitocybe odora",
+    "fairy ring champignon": "Marasmius oreades", "velvet shank": "Flammulina velutipes",
+    "oyster mushroom": "Pleurotus ostreatus", "shaggy ink cap": "Coprinus comatus",
+    "lawyer's wig": "Coprinus comatus", "common ink cap": "Coprinopsis atramentaria",
+    "sulphur tuft": "Hypholoma fasciculare", "brick tuft": "Hypholoma lateritium",
+    "sheathed woodtuft": "Kuehneromyces mutabilis", "funeral bell": "Galerina marginata",
+    "liberty cap": "Psilocybe semilanceata", "brown roll-rim": "Paxillus involutus",
+    "poison pax": "Paxillus involutus", "deadly webcap": "Cortinarius rubellus",
+    "fool's webcap": "Cortinarius orellanus", "yellow knight": "Tricholoma equestre",
+    "man on horseback": "Tricholoma equestre", "soapy knight": "Tricholoma saponaceum",
+    "sulphur knight": "Tricholoma sulphureum", "shaggy parasol": "Chlorophyllum rachodes",
+    "stinking dapperling": "Lepiota cristata", "the sickener": "Russula emetica",
+    "charcoal burner": "Russula cyanoxantha", "crab brittlegill": "Russula xerampelina",
+    "ochre brittlegill": "Russula ochroleuca", "woolly milkcap": "Lactarius torminosus",
+    "saffron milkcap": "Lactarius deliciosus", "false saffron milkcap": "Lactarius deterrimus",
+    "rufous milkcap": "Lactarius rufus", "ugly milkcap": "Lactarius necator",
+    "bleeding fairy helmet": "Mycena haematopus", "burgundydrop bonnet": "Mycena haematopus",
+    "lilac bonnet": "Mycena pura", "blackening waxcap": "Hygrocybe conica",
+    "parrot waxcap": "Hygrocybe psittacina", "snowy waxcap": "Hygrocybe virginea",
+    "scarlet waxcap": "Hygrocybe coccinea", "plums and custard": "Tricholomopsis rutilans",
+    "st george's mushroom": "Calocybe gambosa", "wood blewit": "Lepista nuda",
+    "horse mushroom": "Agaricus arvensis", "field mushroom": "Agaricus campestris",
+    "yellow stainer": "Agaricus xanthodermus", "deer shield": "Pluteus cervinus",
+    "röd flugsvamp": "Amanita muscaria", "panterflugsvamp": "Amanita pantherina",
+    "lömsk flugsvamp": "Amanita virosa", "grön flugsvamp": "Amanita phalloides",
+    "vitgul flugsvamp": "Amanita citrina", "rodnande flugsvamp": "Amanita rubescens",
+    "stensopp": "Boletus edulis", "karljohan": "Boletus edulis", "gallsopp": "Tylopilus felleus",
+    "smörsopp": "Suillus luteus", "grynsopp": "Suillus granulatus", "lärksopp": "Suillus grevillei",
+    "tegelsopp": "Leccinum versipelle", "björksopp": "Leccinum scabrum", "aspsopp": "Leccinum aurantiacum",
+    "falsk kantarell": "Hygrophoropsis aurantiaca", "honungsskivling": "Armillaria",
+    "ametistskivling": "Laccaria amethystina", "laxskivling": "Laccaria laccata",
+    "pudrad trattskivling": "Clitocybe nebularis", "anistrattskivling": "Clitocybe odora",
+    "nejlikbrosking": "Marasmius oreades", "vinterskivling": "Flammulina velutipes",
+    "ostronmussling": "Pleurotus ostreatus", "fjällig bläcksvamp": "Coprinus comatus",
+    "svavelgul slöjskivling": "Hypholoma fasciculare", "tegelröd slöjskivling": "Hypholoma lateritium",
+    "föränderlig tofsskivling": "Kuehneromyces mutabilis", "gifthätting": "Galerina marginata",
+    "toppslätskivling": "Psilocybe semilanceata", "pluggskivling": "Paxillus involutus",
+    "toppig giftspindling": "Cortinarius rubellus", "orange giftspindling": "Cortinarius orellanus",
+    "riddarmusseron": "Tricholoma equestre", "såpmusseron": "Tricholoma saponaceum",
+    "svavelmusseron": "Tricholoma sulphureum", "stolt fjällskivling": "Macrolepiota procera",
+    "giftkremla": "Russula emetica", "sillkremla": "Russula xerampelina",
+    "skäggriska": "Lactarius torminosus", "granblodriska": "Lactarius deterrimus",
+    "blodhätta": "Mycena haematopus", "rättikhätta": "Mycena pura",
+    "toppig vaxskivling": "Hygrocybe conica", "papegojvaxskivling": "Hygrocybe psittacina",
+    "snövit vaxskivling": "Hygrocybe virginea",
+}
+
+
 def expand_query(query: str) -> str:
     """Append the book's terms for everyday/Swedish words found in the query."""
-    words = re.findall(r"[a-zà-ÿ]+", query.lower())
-    swedish = bool(re.search(r"[åäö]", query.lower())) or bool(_SV_MARKERS.intersection(words))
-    extra = []
+    lower = query.lower()
+    words = re.findall(r"[a-zà-ÿ']+", lower)
+    swedish = bool(re.search(r"[åäö]", lower)) or bool(_SV_MARKERS.intersection(words))
+    # longest names first, so "false death cap" is not also read as "death cap"
+    extra, rest = [], lower
+    for name in sorted(_NAMES, key=len, reverse=True):
+        if re.search(rf"(?<![a-zà-ÿ]){re.escape(name)}(?![a-zà-ÿ])", rest):
+            extra.append(_NAMES[name])
+            rest = rest.replace(name, " ")
     for w in words:
+        if w in _MORPH:
+            extra.append(_MORPH[w])
         if w in _VOCAB:
             extra.append(_VOCAB[w])
         elif swedish and w in _VOCAB_SV:
