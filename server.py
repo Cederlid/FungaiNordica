@@ -56,7 +56,7 @@ def list_models():
     return {
         "object": "list",
         "data": [
-            {"id": "gemma4:26b-moe", "object": "model"},
+            {"id": "qwen3.8-27b", "object": "model"},
             {"id": "identify", "object": "model"},
         ],
     }
