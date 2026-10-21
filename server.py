@@ -13,8 +13,10 @@ from pydantic import BaseModel
 from rag.vectorstore import query_documents, get_doc_count
 from rag.llm import RAG_SYSTEM, rag_answer, rag_answer_stream
 from rag.identifier import identify_mushroom, identify_mushroom_stream
+from rag.lexical import tokenize
 
 _HISTORY_TURNS = 8  # earlier user/assistant messages passed to the model
+_NEW_QUESTION_TOKENS = 7  # content words that make a question self-contained
 
 app = FastAPI(title="FungaiNordica API")
 
@@ -76,7 +78,7 @@ def chat_completions(req: ChatRequest):
     # Build a retrieval anchor from the full user conversation so follow-up
     # questions ("which species?") keep the original description in focus.
     user_msgs = [m.content for m in req.messages if m.role == "user" and m.content.strip()]
-    retrieval_query = "\n".join(user_msgs[-3:]) or user_message
+    retrieval_query = user_message if is_new_question(user_message) else "\n".join(user_msgs[-3:]) or user_message
     # earlier turns go to the model so it remembers its own follow-up questions
     history = [{"role": m.role, "content": m.content} for m in req.messages[:-1]
                if m.role in ("user", "assistant")][-_HISTORY_TURNS:]
@@ -130,6 +132,17 @@ def is_casual(message: str) -> bool:
     if text in casual:
         return True
     return bool(re.fullmatch(r"hi+", text))
+
+
+def is_new_question(message: str) -> bool:
+    """A full question of its own ("... brown gills, what could it be?") starts a new topic.
+
+    Retrieving it together with earlier messages lets an unrelated earlier question
+    (e.g. about Amanita muscaria) take over the search. Short questions ("which
+    species?") and statements answering the assistant ("the gills bruise brown")
+    are follow-ups and keep the earlier description.
+    """
+    return "?" in message and len(tokenize(message)) >= _NEW_QUESTION_TOKENS
 
 
 def _json_response(response_text: str, req: ChatRequest):
