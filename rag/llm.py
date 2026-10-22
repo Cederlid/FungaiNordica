@@ -40,6 +40,7 @@ def _chat(messages: list[dict], stream: bool = False, model: str = ""):
 RAG_SYSTEM = (
     "You are a mycological expert assistant using the Funga Nordica identification guide.\n"
     "Answer directly and concisely. Do not show your reasoning or thought process.\n"
+    "Name fungi by their scientific names only; do not add Swedish or English common names.\n"
     "When describing fungi, reference: spore measurements, macroscopic features (cap, stem, gills), "
     "microscopic features, habitat, and season.\n"
     "If the user describes a fungus, give your best identification (species name with author, "
@@ -54,7 +55,8 @@ RAG_SYSTEM = (
 
 IDENTIFY_SYSTEM = (
     "You are a mycological expert assistant using the Funga Nordica identification guide.\n"
-    "Your task is to help identify a fungus based on the features the user describes.\n\n"
+    "Your task is to help identify a fungus based on the features the user describes.\n"
+    "Name fungi by their scientific names only; do not add Swedish or English common names.\n\n"
     "1. List possible species that match the described features.\n"
     "2. For each candidate species, note the key features that match and any that conflict.\n"
     "3. If the features are not sufficient to identify the species, ask the user specific "
