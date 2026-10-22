@@ -1,19 +1,37 @@
+import re
+
 from rag.keypath import key_path, species_index
 from rag.vectorstore import get_collection, query_chunks
 from rag.llm import identify as llm_identify, identify_stream as llm_identify_stream
 
 _N_RESULTS = 12
 _MAX_CANDIDATES = 6
+_POOL = 100  # ranked chunks searched for the best species of a genus a couplet leads to
 
 
-def _candidates(chunks: list[tuple[str, dict]], species: dict) -> list[str]:
+def _target_species(target: str, species: dict, ranked: list[tuple[str, dict]]) -> str:
+    """The species a couplet target stands for: the species itself, or for a genus
+    ("Agaricus p. 519" in the Key to genera) its best-ranked species."""
+    name = re.sub(r"\s+p\.\s*\d+$", "", target)
+    if name in species:
+        return name
+    if " " in name:  # a sub-key ("Key D") or an unindexed species
+        return ""
+    for _, meta in ranked:
+        if meta.get("kind") == "species" and meta.get("genus") == name and meta.get("species") in species:
+            return meta["species"]
+    return ""
+
+
+def _candidates(chunks: list[tuple[str, dict]], species: dict, ranked=()) -> list[str]:
     """Species names in retrieval order: described species, and species a retrieved couplet leads to."""
+    ranked = ranked or chunks
     names = []
     for _, meta in chunks:
         if meta.get("kind") == "species":
             found = [meta.get("species", "")]
         elif meta.get("kind") == "couplet":
-            found = [t for t in meta.get("targets", "").split("|") if t in species]
+            found = [_target_species(t, species, ranked) for t in meta.get("targets", "").split("|")]
         else:
             found = []
         for name in found:
@@ -24,12 +42,13 @@ def _candidates(chunks: list[tuple[str, dict]], species: dict) -> list[str]:
 
 def identification_context(features: str, n_results: int = _N_RESULTS) -> list[str]:
     """Retrieved chunks plus, for each top species candidate, its description and key path."""
-    chunks = query_chunks(features, n_results=n_results)
+    ranked = query_chunks(features, n_results=max(n_results, _POOL))
+    chunks = ranked[:n_results]
     docs = [text for text, _ in chunks]
     collection = get_collection()
     species = species_index(collection)
     routed = set()  # genera whose route through the Key to genera is already shown
-    for name in _candidates(chunks, species):
+    for name in _candidates(chunks, species, ranked):
         text, meta = species[name]
         if text not in docs:
             docs.append(text)
