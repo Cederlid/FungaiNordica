@@ -4,7 +4,7 @@ from rag.keypath import _couplets, key_path, species_index
 from rag.vectorstore import get_collection, query_chunks
 from rag.llm import identify as llm_identify, identify_stream as llm_identify_stream
 
-_N_RESULTS = 12
+_N_RESULTS = 8
 _MAX_CANDIDATES = 6
 _RRF_K = 60  # as in the hybrid search
 _SCORED = 20  # chunks whose support decides the candidate order
@@ -161,7 +161,8 @@ def identification_context(features: str, n_results: int = _N_RESULTS) -> list[s
     collection = get_collection()
     species = species_index(collection)
     allowed = _deposit_keys(features)
-    routed = set()  # genera whose route through the Key to genera is already shown
+    genera = set()  # genera whose introduction is already included
+    shown = {}  # key-path step -> candidate whose path first showed it
     kept, ruled_out = 0, []
     # scored on the best chunks; the rest of the pool fills places the spore filter frees
     names = _candidates(ranked[:_SCORED], species, ranked) + _candidates(ranked, species)
@@ -175,15 +176,22 @@ def identification_context(features: str, n_results: int = _N_RESULTS) -> list[s
             ruled_out.append(f"{name} (Key to genera, Key {'/'.join(sections)})")
             continue
         kept += 1
-        if meta["genus"] not in routed:
+        if meta["genus"] not in genera:
             docs.extend(t for t in _genus_intro(collection, meta["genus"]) if t not in docs)
+        genera.add(meta["genus"])
         if text not in docs:
             docs.append(text)
-        if meta["genus"] in routed:
-            steps = [s for s in steps if not s.startswith("Key to genera")]
-        routed.add(meta["genus"])
-        if steps:
-            docs.append(f"Key path to {name}:\n" + "\n".join(f"- {s}" for s in steps))
+        # paths share their start (the Key to genera, a genus key): show each step once
+        same = 0
+        while same < len(steps) and steps[same] in shown:
+            same += 1
+        header = f"Key path to {name}"
+        if same:
+            header += f" (first {same} steps as in the key path to {shown[steps[same - 1]]})"
+        for step in steps:
+            shown.setdefault(step, name)
+        if steps[same:]:
+            docs.append(f"{header}:\n" + "\n".join(f"- {s}" for s in steps[same:]))
     if ruled_out:
         docs.append("Ruled out by the reported spore deposit colour (allowed: Key to genera "
                     + ", ".join(f"Key {k}" for k in allowed) + "):\n"

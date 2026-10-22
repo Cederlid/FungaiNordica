@@ -9,6 +9,7 @@ import re
 
 _MAX_STEPS = 40
 _LEAD_CHARS = 160  # species-description leads are long; the start holds the key character
+_ALT_CHARS = 100  # the rejected alternative only needs its distinguishing start
 
 _cache = None  # (doc count, couplets)
 _species_cache = None  # (doc count, {species name: (first description chunk, metadata)})
@@ -105,8 +106,8 @@ def key_path(collection, meta: dict) -> list[str]:
         path.append((parent, i))
         current = parent
 
-    def short(text):
-        return text if len(text) <= _LEAD_CHARS else text[:_LEAD_CHARS].rsplit(" ", 1)[0] + " …"
+    def short(text, limit=_LEAD_CHARS):
+        return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0] + " …"
 
     lines = []
     for r, i in reversed(path):
@@ -114,7 +115,7 @@ def key_path(collection, meta: dict) -> list[str]:
         if r["key"] and r["key"] != "Main key":
             where += f", {r['key'].split(':')[0]}"
         lead, target = r["leads"][i]
-        others = [f"{short(l)} → {t}" for j, (l, t) in enumerate(r["leads"]) if j != i]
+        others = [f"{short(l, _ALT_CHARS)} → {short(t, _ALT_CHARS)}" for j, (l, t) in enumerate(r["leads"]) if j != i]
         line = f"{where}, couplet {r['couplet']}: {short(lead)} → {target}"
         if others:
             line += f"  [not: {others[0]}]"

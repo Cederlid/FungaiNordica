@@ -48,6 +48,13 @@ class ChatResponse(BaseModel):
     usage: dict
 
 
+@app.on_event("startup")
+def warm_up():
+    # load the embedding model and search indexes now, not on the first question (~10 s)
+    if get_doc_count():
+        identification_context("warm up")
+
+
 @app.get("/")
 def root():
     return {"service": "FungaiNordica", "status": "running", "documents": get_doc_count()}
