@@ -10,9 +10,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from rag.vectorstore import query_documents, get_doc_count
+from rag.vectorstore import get_doc_count
 from rag.llm import RAG_SYSTEM, rag_answer, rag_answer_stream
-from rag.identifier import identify_mushroom, identify_mushroom_stream
+from rag.identifier import identification_context, identify_mushroom, identify_mushroom_stream
 from rag.lexical import tokenize
 
 _HISTORY_TURNS = 8  # earlier user/assistant messages passed to the model
@@ -105,7 +105,9 @@ def chat_completions(req: ChatRequest):
         response_text = identify_mushroom(user_message, history=history, retrieval_query=retrieval_query)
 
     else:
-        docs = query_documents(retrieval_query)
+        # users describe finds here too, without choosing "identify": give the same
+        # species descriptions, genus introductions and key paths
+        docs = identification_context(retrieval_query)
         # a system prompt set in LibreChat replaces the default one
         system = system_prompt or RAG_SYSTEM
         if req.stream:
