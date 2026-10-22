@@ -7,7 +7,7 @@ import chromadb
 from chromadb.config import Settings
 
 from rag.embeddings import embed_texts, embed_query
-from rag.lexical import BM25, expand_query
+from rag.lexical import BM25, correct_spelling, expand_query
 
 # next to the project root, regardless of the working directory (/app/chroma_db in Docker);
 # CHROMA_DB_PATH lets a rebuild write to a separate directory first
@@ -70,12 +70,13 @@ def query_chunks(query: str, n_results: int = 4) -> list[tuple[str, dict]]:
 
     Returns (text, metadata) pairs.
     """
-    # the book text is NFKC-normalized at ingest (ligatures, µ -> μ); match it
-    query = expand_query(unicodedata.normalize("NFKC", query))
     collection = get_collection()
     if collection.count() == 0:
         return []
     _, ids, chunks, bm25 = _lexical_index()
+    # the book text is NFKC-normalized at ingest (ligatures, µ -> μ); match it
+    query = unicodedata.normalize("NFKC", query)
+    query = expand_query(correct_spelling(query, bm25.index))
     by_id = dict(zip(ids, chunks))
 
     sem = collection.query(query_embeddings=[embed_query(query)], n_results=_POOL, include=[])["ids"][0]

@@ -165,11 +165,68 @@ _NAMES = {
 }
 
 
+_BOOK_MIN_DF = 3  # book words this rare are often OCR noise, not correction targets
+_BOOK_MIN_LEN = 7  # shorter words are one letter from too many book words ("fills" -> "fall")
+
+
+def _edits(a: str, b: str) -> int:
+    """Levenshtein distance, with adjacent swaps counted as one edit."""
+    d = [[i + j if i * j == 0 else 0 for j in range(len(b) + 1)] for i in range(len(a) + 1)]
+    for i in range(1, len(a) + 1):
+        for j in range(1, len(b) + 1):
+            d[i][j] = min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] != b[j - 1]))
+            if i > 1 and j > 1 and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
+                d[i][j] = min(d[i][j], d[i - 2][j - 2] + 1)
+    return d[-1][-1]
+
+
+def _closest(word: str, candidates, max_edits: int) -> str:
+    near = [c for c in candidates if c[:1] == word[:1] and abs(len(c) - len(word)) <= max_edits]
+    best = min(near, key=lambda c: _edits(word, c), default="")
+    return best if best and _edits(word, best) <= max_edits else ""
+
+
+def correct_spelling(query: str, vocab: dict) -> str:
+    """Replace misspelled English words with the closest field-vocabulary or book word.
+
+    `vocab` maps BM25 terms to the chunks containing them. Only words neither the
+    book nor the vocabularies know are touched, at most one letter off (two in
+    long words) and keeping the first letter; only long words are matched
+    against the whole book: "worts" -> "warts", "unpleasent" ->
+    "unpleasant". Swedish queries are left alone, their everyday words are not in
+    the English book.
+    """
+    lower = query.lower()
+    words = re.findall(r"[a-zà-ÿ]+", lower)
+    if _is_swedish(lower, words):
+        return query
+    named = {w for name in _NAMES for w in name.split()}
+    field = list(_MORPH) + list(_VOCAB)
+    fixes = {}
+    for w in set(words):
+        if len(w) < 5 or w in _STOP or w in named or w in _MORPH or w in _VOCAB or _stem(w) in vocab:
+            continue
+        max_edits = 2 if len(w) >= 8 else 1
+        fix = _closest(w, field, max_edits)
+        if not fix and len(w) >= _BOOK_MIN_LEN:
+            common = [t for t in vocab if t[:1] == w[:1] and len(vocab[t]) >= _BOOK_MIN_DF]
+            fix = _closest(_stem(w), common, max_edits)
+        if fix:
+            fixes[w] = fix
+    for w, fix in fixes.items():
+        query = re.sub(rf"(?<![a-zà-ÿ]){w}(?![a-zà-ÿ])", fix, query, flags=re.IGNORECASE)
+    return query
+
+
+def _is_swedish(lower: str, words: list[str]) -> bool:
+    return bool(re.search(r"[åäö]", lower)) or bool(_SV_MARKERS.intersection(words))
+
+
 def expand_query(query: str) -> str:
     """Append the book's terms for everyday/Swedish words found in the query."""
     lower = query.lower()
     words = re.findall(r"[a-zà-ÿ']+", lower)
-    swedish = bool(re.search(r"[åäö]", lower)) or bool(_SV_MARKERS.intersection(words))
+    swedish = _is_swedish(lower, words)
     # longest names first, so "false death cap" is not also read as "death cap"
     extra, rest = [], lower
     for name in sorted(_NAMES, key=len, reverse=True):
