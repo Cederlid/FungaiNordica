@@ -7,6 +7,14 @@ from rag.llm import identify as llm_identify, identify_stream as llm_identify_st
 _N_RESULTS = 12
 _MAX_CANDIDATES = 6
 _POOL = 100  # ranked chunks searched for the best species of a genus a couplet leads to
+# genus introductions hold characters the species descriptions leave out (gill
+# colour, spore deposit, habitat); the first chunks cover them
+_INTRO_CHUNKS = 2
+
+
+def _genus_intro(collection, genus: str) -> list[str]:
+    got = collection.get(where={"$and": [{"kind": "intro"}, {"genus": genus}]}, include=["documents"])
+    return got["documents"][:_INTRO_CHUNKS]
 
 
 def _target_species(target: str, species: dict, ranked: list[tuple[str, dict]]) -> str:
@@ -50,6 +58,8 @@ def identification_context(features: str, n_results: int = _N_RESULTS) -> list[s
     routed = set()  # genera whose route through the Key to genera is already shown
     for name in _candidates(chunks, species, ranked):
         text, meta = species[name]
+        if meta["genus"] not in routed:
+            docs.extend(t for t in _genus_intro(collection, meta["genus"]) if t not in docs)
         if text not in docs:
             docs.append(text)
         steps = key_path(collection, meta)
