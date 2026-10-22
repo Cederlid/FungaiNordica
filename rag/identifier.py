@@ -6,6 +6,8 @@ from rag.llm import identify as llm_identify, identify_stream as llm_identify_st
 
 _N_RESULTS = 12
 _MAX_CANDIDATES = 6
+_RRF_K = 60  # as in the hybrid search
+_SCORED = 20  # chunks whose support decides the candidate order
 _POOL = 100  # ranked chunks searched for the best species of a genus a couplet leads to
 # genus introductions hold characters the species descriptions leave out (gill
 # colour, spore deposit, habitat); the first chunks cover them
@@ -127,20 +129,25 @@ def _target_species(target: str, species: dict, ranked: list[tuple[str, dict]]) 
 
 
 def _candidates(chunks: list[tuple[str, dict]], species: dict, ranked=()) -> list[str]:
-    """Species names in retrieval order: described species, and species a retrieved couplet leads to."""
+    """Species named by the retrieved chunks, best supported first.
+
+    A species gains a reciprocal-rank score from every chunk pointing at it, its
+    own description and the couplets that lead to it, so a species backed by
+    both outranks one that only a single loose chunk mentions.
+    """
     ranked = ranked or chunks
-    names = []
-    for _, meta in chunks:
+    scores = {}
+    for rank, (_, meta) in enumerate(chunks):
         if meta.get("kind") == "species":
             found = [meta.get("species", "")]
         elif meta.get("kind") == "couplet":
             found = [_target_species(t, species, ranked) for t in meta.get("targets", "").split("|")]
         else:
             found = []
-        for name in found:
-            if name and name not in names:
-                names.append(name)
-    return names
+        for name in dict.fromkeys(found):
+            if name:
+                scores[name] = scores.get(name, 0.0) + 1 / (_RRF_K + rank + 1)
+    return sorted(scores, key=scores.get, reverse=True)  # stable: ties keep retrieval order
 
 
 def identification_context(features: str, n_results: int = _N_RESULTS) -> list[str]:
@@ -156,7 +163,9 @@ def identification_context(features: str, n_results: int = _N_RESULTS) -> list[s
     allowed = _deposit_keys(features)
     routed = set()  # genera whose route through the Key to genera is already shown
     kept, ruled_out = 0, []
-    for name in _candidates(ranked, species):
+    # scored on the best chunks; the rest of the pool fills places the spore filter frees
+    names = _candidates(ranked[:_SCORED], species, ranked) + _candidates(ranked, species)
+    for name in dict.fromkeys(names):
         if kept == _MAX_CANDIDATES:
             break
         text, meta = species[name]
