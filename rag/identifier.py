@@ -1,6 +1,6 @@
 import re
 
-from rag.keypath import key_path, species_index
+from rag.keypath import _couplets, key_path, species_index
 from rag.vectorstore import get_collection, query_chunks
 from rag.llm import identify as llm_identify, identify_stream as llm_identify_stream
 
@@ -11,29 +11,66 @@ _POOL = 100  # ranked chunks searched for the best species of a genus a couplet 
 # colour, spore deposit, habitat); the first chunks cover them
 _INTRO_CHUNKS = 2
 
-# spore deposit colour as users report it -> the Key to genera sections it allows
-# (C white to very pale pinkish, D pink, E greenish, F pale to dull brown,
-# G very dark brown to black); darker colours are matched first
-_DEPOSIT = [
-    (r"dark brown|chocolate|purpl\w*|black\w*|mörkbrun\w*|svart\w*", "G"),
+# spore deposit colour words -> the Key to genera sections they allow (C white to
+# very pale pinkish, D pink, E greenish, F pale to dull brown, G very dark brown to black)
+_COLOUR = [
+    (r"black\w*|purpl\w*|chocolate|mörkbrun\w*|svart\w*", "G"),
     (r"brown\w*|rust\w*|ochre|cinnamon|tobacco|brun\w*", "FG"),
-    (r"pink\w*|salmon|rosa", "CD"),
+    (r"buff", "CF"),
+    (r"pink\w*|salmon|flesh|rosa", "CD"),
     (r"green\w*|grön\w*", "E"),
-    (r"white|whitish|cream|pale|yellow\w*|vit\w*|gul\w*", "C"),
+    (r"white|whitish|cream\w*|yellow\w*|vit\w*|gul\w*", "C"),
 ]
-_SPORE = r"(?:spore(?:s)?(?:\s+(?:print|deposit))?|sp\s+deposit|sporavtryck\w*|sporpulver\w*|sporer(?:na)?)"
-# words allowed between them: "spore print is very dark brown", "sporavtrycket var vitt"
-_FILL = r"(?:\W+(?:is|are|was|were|it|and|turned|very|quite|rather|light|a|är|var|blev|den|det|och|mycket|ganska|ljust?|colou?r(?:ed)?))*\W+"
+_DARK = {"dark", "mörk", "mörkt"}
+# words that may sit between "spore" and the colour, or inside a colour phrase:
+# "spore print is very dark brown", "whitish to cream or greenish", "sporavtrycket var vitt"
+_LINK = {"print", "deposit", "colour", "color", "coloured", "colored", "is", "are", "was", "were", "it",
+         "and", "or", "to", "turned", "very", "quite", "rather", "light", "pale", "vivid", "dull", "dark",
+         "grey", "greyish", "red", "reddish", "a", "är", "var", "blev", "den", "det", "och", "eller",
+         "till", "mycket", "ganska", "ljus", "ljust", "mörk", "mörkt"}
+_SPORE = re.compile(r"spores?|sporavtryck\w*|sporpulver\w*|sporer\w*")
+
+
+def _colour_keys(word: str, prev: str) -> str:
+    for pattern, keys in _COLOUR:
+        if re.fullmatch(pattern, word):
+            return "G" if keys == "FG" and prev in _DARK else keys
+    return ""
+
+
+def _phrase_keys(words: list[str]) -> str:
+    """Sections allowed by the colour words of a phrase, up to the first other word."""
+    keys, dark = set(), ""  # "dark" carries on: "dark purplish brown", "chocolate brown"
+    for w in words:
+        k = _colour_keys(w, dark)
+        if not k and w not in _LINK:
+            break
+        keys |= set(k)
+        if w in _DARK or k == "G":
+            dark = "dark"
+    return "".join(sorted(keys))
 
 
 def _deposit_keys(features: str) -> str:
-    """Key to genera sections allowed by a reported spore deposit colour ("" if none given)."""
-    text = features.lower()
-    for colour, keys in _DEPOSIT:
-        if re.search(rf"\b(?:{colour}){_FILL}{_SPORE}\b", text) or \
-                re.search(rf"\b{_SPORE}{_FILL}(?:{colour})\b", text):
-            return keys
-    return ""
+    """Key to genera sections allowed by a reported spore deposit colour ("" if none given).
+
+    Every colour in the phrase counts ("yellow brown", "brownish pink"), so a
+    mixed colour never rules out a section it names.
+    """
+    words = re.findall(r"[a-zåäö]+|[,.;!?]", features.lower())  # punctuation ends a phrase
+    keys = set()
+    for i, w in enumerate(words):
+        if not (_SPORE.fullmatch(w) or (w == "sp" and words[i + 1:i + 2] == ["deposit"])):
+            continue
+        keys |= set(_phrase_keys(words[i + 1:]))
+        # "dark brown spores": a colour phrase ending right before the spore word
+        if i == 0 or not _colour_keys(words[i - 1], ""):
+            continue
+        start = i
+        while start > max(0, i - 4) and (words[start - 1] in _LINK or _colour_keys(words[start - 1], "")):
+            start -= 1
+        keys |= set(_phrase_keys(words[start:i]))
+    return "".join(sorted(keys))
 
 
 def _genera_key(steps: list[str]) -> str:
@@ -43,6 +80,31 @@ def _genera_key(steps: list[str]) -> str:
         if m:
             return m.group(1)
     return ""
+
+
+_sections_cache = None  # (doc count, {genus: sections})
+
+
+def _genus_sections(collection) -> dict:
+    """Genus -> every spore-deposit section (C-G) of the Key to genera that leads to it.
+
+    Some genera are keyed under several colours (Lepista under C and D, Psathyrella
+    under F and G), while a key path follows only one route.
+    """
+    global _sections_cache
+    count = collection.count()
+    if _sections_cache is None or _sections_cache[0] != count:
+        sections = {}
+        for r in _couplets(collection):
+            m = re.match(r"Key ([C-G])\b", r["key"] or "")
+            if r["genus"] or not m:
+                continue
+            for _, target in r["leads"]:
+                genus = target.split(" ")[0]
+                if genus[:1].isupper() and genus != "Key":
+                    sections[genus] = "".join(sorted(set(sections.get(genus, "")) | {m.group(1)}))
+        _sections_cache = (count, sections)
+    return _sections_cache[1]
 
 
 def _genus_intro(collection, genus: str) -> list[str]:
@@ -99,9 +161,9 @@ def identification_context(features: str, n_results: int = _N_RESULTS) -> list[s
             break
         text, meta = species[name]
         steps = key_path(collection, meta)
-        section = _genera_key(steps)
-        if allowed and section and section not in allowed:
-            ruled_out.append(f"{name} (Key to genera, Key {section})")
+        sections = _genus_sections(collection).get(meta["genus"]) or _genera_key(steps)
+        if allowed and sections and not set(sections) & set(allowed):
+            ruled_out.append(f"{name} (Key to genera, Key {'/'.join(sections)})")
             continue
         kept += 1
         if meta["genus"] not in routed:
