@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import httpx
 
@@ -18,6 +19,7 @@ REMOTE_API_KEY = os.environ.get("REMOTE_API_KEY", "")
 # eval_identify.py it made identify answers 3-4x slower (median 214 s vs ~60 s)
 # without being more accurate. LLM_THINKING=1 turns it back on.
 THINKING = os.environ.get("LLM_THINKING", "0") == "1"
+ANSWER_DEADLINE = 300  # seconds
 
 
 def _chat(messages: list[dict], stream: bool = False, model: str = ""):
@@ -102,9 +104,14 @@ def _complete(messages: list[dict], model: str = "") -> str:
 
 
 def _stream(messages: list[dict], model: str = ""):
+    # a loaded API keeps the line open with keep-alives and can take 15+ minutes;
+    # give up and tell the user instead of letting the chat hang
+    deadline = time.monotonic() + ANSWER_DEADLINE
     with _chat(messages, stream=True, model=model) as resp:
         resp.raise_for_status()
         for line in resp.iter_lines():
+            if time.monotonic() > deadline:
+                raise TimeoutError(f"no complete answer within {ANSWER_DEADLINE} s")
             if not line or not line.startswith("data: "):
                 continue
             payload = line[6:]
@@ -160,3 +167,4 @@ def identify(features: str, context_docs: list[str], model: str = "", history=()
 
 def identify_stream(features: str, context_docs: list[str], model: str = "", history=()):
     yield from _stream(_identify_messages(features, context_docs, history), model=model)
+
