@@ -214,7 +214,15 @@ def streaming_response(text_iter, model: str):
             yield f"data: {json.dumps(final_chunk)}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            # as answer text: LibreChat does not show an "error" field in a stream
+            message = ("\n\nThe language model did not answer this time (it may be overloaded). "
+                       f"Please try again in a moment. [{type(e).__name__}: {e}]")
+            for chunk in ({"delta": {"content": message}, "finish_reason": None},
+                          {"delta": {}, "finish_reason": "stop"}):
+                body = {"id": completion_id, "object": "chat.completion.chunk", "created": created,
+                        "model": model, "choices": [{"index": 0, **chunk}]}
+                yield f"data: {json.dumps(body)}\n\n"
+            yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
