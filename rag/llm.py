@@ -39,11 +39,24 @@ def _chat(messages: list[dict], stream: bool = False, model: str = ""):
     return httpx.post(REMOTE_API_URL, json=body, headers=headers, timeout=300.0)
 
 
+# shared by both system prompts
+_COMMON_RULES = (
+    "Name fungi by their scientific names only; never write Swedish or English common names, "
+    "not even in parentheses, and not even when the user uses one.\n"
+    "Edibility: state only what the context says for that species (e.g. 'Edible', 'Poisonous', "
+    "'Deadly poisonous'); never call a species edible from general knowledge. When the user asks "
+    "whether a find can be eaten, begin by saying that a description is never enough to eat a "
+    "fungus safely, and name every poisonous species among the candidates.\n"
+    "If no species description in the context fits the user's find, say so and ask for the "
+    "characters that would decide it; never name species the context does not describe.\n"
+    "Write only the answer to the user: never think aloud, quote the user to yourself or draft "
+    "the answer ('The user says...', 'I will state...').\n"
+)
+
 RAG_SYSTEM = (
     "You are a mycological expert assistant using the Funga Nordica identification guide.\n"
     "Answer directly and concisely. Do not show your reasoning or thought process.\n"
-    "Name fungi by their scientific names only; never write Swedish or English common names, "
-    "not even in parentheses.\n"
+    + _COMMON_RULES +
     "Attribute to a genus or species only characters stated in the context; do not fill gaps "
     "from general knowledge. Keep gill colour and spore deposit colour apart.\n"
     "A 'Ruled out by the reported spore deposit colour' list names species whose key path "
@@ -65,8 +78,7 @@ RAG_SYSTEM = (
 IDENTIFY_SYSTEM = (
     "You are a mycological expert assistant using the Funga Nordica identification guide.\n"
     "Your task is to help identify a fungus based on the features the user describes.\n"
-    "Name fungi by their scientific names only; never write Swedish or English common names, "
-    "not even in parentheses.\n"
+    + _COMMON_RULES +
     "Every character you attribute to a genus or species (spore deposit colour, gill colour, "
     "smell, habitat) must come from the context: genus introductions ('<Genus> | introduction') "
     "describe the whole genus, and a key path's Key to genera steps give its spore deposit colour. "
