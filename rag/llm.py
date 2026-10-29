@@ -51,6 +51,9 @@ _COMMON_RULES = (
     "fungus safely, and name every poisonous species among the candidates.\n"
     "If no species description in the context fits the user's find, say so and ask for the "
     "characters that would decide it; never name species the context does not describe.\n"
+    "When comparing species, take each species' characters (spore size, habitat, smell) from its "
+    "own description or key lead, never from a neighbouring one, and do not compare a character "
+    "the context does not give for both.\n"
     "Write only the answer to the user: never think aloud, quote the user to yourself or draft "
     "the answer ('The user says...', 'I will state...').\n"
 )
