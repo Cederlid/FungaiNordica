@@ -10,6 +10,23 @@ import re
 from collections import Counter
 from functools import lru_cache
 
+# group names -> genus; common_names reports them so the answer can say which taxon is meant
+_GROUPS_EN = {
+    "milkcap": "Lactarius", "milkcaps": "Lactarius", "brittlegill": "Russula", "brittlegills": "Russula",
+    "webcap": "Cortinarius", "webcaps": "Cortinarius", "bonnet": "Mycena", "bonnets": "Mycena",
+    "waxcap": "Hygrocybe", "waxcaps": "Hygrocybe", "inkcap": "Coprinus", "inkcaps": "Coprinus",
+    "parasol": "Macrolepiota", "chanterelle": "Cantharellus", "chanterelles": "Cantharellus",
+}
+_GROUPS_SV = {
+    "riska": "Lactarius", "riskor": "Lactarius", "kremla": "Russula", "kremlor": "Russula",
+    "flugsvamp": "Amanita", "flugsvampar": "Amanita", "sopp": "Boletus", "soppar": "Boletus",
+    "spindling": "Cortinarius", "spindlingar": "Cortinarius", "trådskivling": "Inocybe",
+    "hätta": "Mycena", "hättor": "Mycena", "vaxskivling": "Hygrocybe", "musseron": "Tricholoma",
+    "fjällskivling": "Lepiota", "kantarell": "Cantharellus", "champinjon": "Agaricus",
+    "bläcksvamp": "Coprinus", "tofsskivling": "Pholiota", "slemskivling": "Hygrophorus",
+}
+_GROUPS = {**_GROUPS_EN, **_GROUPS_SV}
+
 # everyday term -> book term(s); keys are matched as whole words (lowercase)
 _VOCAB = {
     # trees and hosts
@@ -22,10 +39,8 @@ _VOCAB = {
     # book abbreviations
     "spores": "sp", "spore": "sp", "print": "deposit",
     "basidiocarp": "frb", "fruitbody": "frb", "fruitbodies": "frb",
-    # group names
-    "milkcap": "Lactarius", "milkcaps": "Lactarius", "brittlegill": "Russula",
-    "bolete": "tubes", "boletes": "tubes", "webcap": "Cortinarius", "bonnet": "Mycena",
-    "waxcap": "Hygrocybe", "inkcap": "Coprinus", "ink": "deliquescent", "parasol": "Macrolepiota",
+    "bolete": "tubes", "boletes": "tubes", "ink": "deliquescent",
+    **_GROUPS_EN,
 }
 
 # Swedish -> book terms; only applied to Swedish queries ("tall", "ask", "bok" are English words too)
@@ -54,13 +69,7 @@ _VOCAB_SV = {
     "tuvor": "clusters", "tuvad": "caespitose", "stubbar": "stumps", "stubbe": "stump",
     "ved": "wood", "mossa": "moss", "gräs": "grass", "höst": "autumn", "sommar": "summer",
     "giftig": "poisonous", "dödligt": "deadly", "ätlig": "edible",
-    # Swedish group names
-    "riska": "Lactarius", "riskor": "Lactarius", "kremla": "Russula", "kremlor": "Russula",
-    "flugsvamp": "Amanita", "flugsvampar": "Amanita", "sopp": "Boletus", "soppar": "Boletus",
-    "spindling": "Cortinarius", "spindlingar": "Cortinarius", "trådskivling": "Inocybe",
-    "hätta": "Mycena", "hättor": "Mycena", "vaxskivling": "Hygrocybe", "musseron": "Tricholoma",
-    "fjällskivling": "Lepiota", "kantarell": "Cantharellus", "champinjon": "Agaricus",
-    "bläcksvamp": "Coprinus", "tofsskivling": "Pholiota", "slemskivling": "Hygrophorus",
+    **_GROUPS_SV,
     # habitats; values may be everyday English words, expanded further by _MORPH/_VOCAB
     "skog": "forest", "blandskog": "mixed forest", "blandad": "mixed", "löv": "deciduous leaves litter",
     "barr": "coniferous needles", "äng": "meadows", "hage": "pasture grassland", "bete": "pasture grazed",
@@ -303,17 +312,35 @@ def _sv_terms(w: str) -> tuple[str, ...] | None:
     return None
 
 
+def _name_phrases(lower: str) -> tuple[list[tuple[str, str]], str]:
+    """(name, taxon) for the _NAMES phrases in a lowercased query, and the query without them."""
+    # longest names first, so "false death cap" is not also read as "death cap"
+    found, rest = [], lower
+    for name in sorted(_NAMES, key=len, reverse=True):
+        if re.search(rf"(?<![a-zà-ÿ]){re.escape(name)}(?![a-zà-ÿ])", rest):
+            found.append((name, _NAMES[name]))
+            rest = rest.replace(name, " ")
+    return found, rest
+
+
+def common_names(query: str) -> list[tuple[str, str]]:
+    """(name as written, Funga Nordica taxon) for each common or group name in a query:
+    "falsk kantarell" -> Hygrophoropsis aurantiaca, "kantarellerna" -> Cantharellus."""
+    found, rest = _name_phrases(query.lower())
+    for w in re.findall(r"[a-zà-ÿ']+", rest):
+        forms = [w] + [w[:-len(e)] for e in _SV_ENDINGS if w.endswith(e)]
+        base = next((f for f in forms if f in _GROUPS), None)
+        if base:
+            found.append((w, _GROUPS[base]))
+    return list(dict.fromkeys(found))
+
+
 def expand_query(query: str) -> str:
     """Append the book's terms for everyday/Swedish words found in the query."""
     lower = query.lower()
     words = re.findall(r"[a-zà-ÿ']+", lower)
     swedish = _is_swedish(lower, words)
-    # longest names first, so "false death cap" is not also read as "death cap"
-    extra, rest = [], lower
-    for name in sorted(_NAMES, key=len, reverse=True):
-        if re.search(rf"(?<![a-zà-ÿ]){re.escape(name)}(?![a-zà-ÿ])", rest):
-            extra.append(_NAMES[name])
-            rest = rest.replace(name, " ")
+    extra = [taxon for _, taxon in _name_phrases(lower)[0]]
     for w in words:
         if w in _MORPH:
             extra.append(_MORPH[w])

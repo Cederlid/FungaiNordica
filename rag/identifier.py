@@ -1,6 +1,7 @@
 import re
 
 from rag.keypath import _couplets, key_path, species_index
+from rag.lexical import common_names
 from rag.vectorstore import get_collection, query_chunks
 from rag.llm import identify as llm_identify, identify_stream as llm_identify_stream
 
@@ -150,6 +151,22 @@ def _candidates(chunks: list[tuple[str, dict]], species: dict, ranked=()) -> lis
     return sorted(scores, key=scores.get, reverse=True)  # stable: ties keep retrieval order
 
 
+def _name_notes(collection, species: dict, features: str) -> list[str]:
+    """Which taxon each common name in the message stands for, and whether the book describes it.
+
+    Without this the model answers "kantarell" with the species the search found
+    instead (Hygrophoropsis), although the book has no Cantharellus.
+    """
+    notes = []
+    for said, taxon in common_names(features):
+        if " " in taxon:
+            described = any(n.startswith(taxon + " ") or n == taxon for n in species)
+        else:
+            described = bool(collection.get(where={"genus": taxon}, limit=1)["ids"])
+        notes.append(f"'{said}' is {taxon}" + ("" if described else ", which this book does not describe"))
+    return notes
+
+
 def identification_context(features: str, n_results: int = _N_RESULTS) -> list[str]:
     """Retrieved chunks plus, for each top species candidate, its description and key path.
 
@@ -192,6 +209,9 @@ def identification_context(features: str, n_results: int = _N_RESULTS) -> list[s
             shown.setdefault(step, name)
         if steps[same:]:
             docs.append(f"{header}:\n" + "\n".join(f"- {s}" for s in steps[same:]))
+    notes = _name_notes(collection, species, features)
+    if notes:
+        docs.insert(0, "Names in the user's message:\n" + "\n".join(f"- {n}" for n in notes))
     if ruled_out:
         docs.append("Ruled out by the reported spore deposit colour (allowed: Key to genera "
                     + ", ".join(f"Key {k}" for k in allowed) + "):\n"

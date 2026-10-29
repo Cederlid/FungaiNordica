@@ -42,7 +42,9 @@ def _chat(messages: list[dict], stream: bool = False, model: str = ""):
 # shared by both system prompts
 _COMMON_RULES = (
     "Name fungi by their scientific names only; never write Swedish or English common names, "
-    "not even in parentheses, and not even when the user uses one.\n"
+    "not even in parentheses, and not even when the user uses one. 'Names in the user's message' "
+    "says which taxon a common name stands for; if this book does not describe it, say so and do "
+    "not describe it with other species' characters.\n"
     "Edibility: state only what the context says for that species (e.g. 'Edible', 'Poisonous', "
     "'Deadly poisonous'); never call a species edible from general knowledge. When the user asks "
     "whether a find can be eaten, begin by saying that a description is never enough to eat a "
