@@ -8,6 +8,7 @@ terms so both the keyword and the embedding search can match them.
 import math
 import re
 from collections import Counter
+from functools import lru_cache
 
 # everyday term -> book term(s); keys are matched as whole words (lowercase)
 _VOCAB = {
@@ -60,7 +61,49 @@ _VOCAB_SV = {
     "hätta": "Mycena", "hättor": "Mycena", "vaxskivling": "Hygrocybe", "musseron": "Tricholoma",
     "fjällskivling": "Lepiota", "kantarell": "Cantharellus", "champinjon": "Agaricus",
     "bläcksvamp": "Coprinus", "tofsskivling": "Pholiota", "slemskivling": "Hygrophorus",
+    # habitats; values may be everyday English words, expanded further by _MORPH/_VOCAB
+    "skog": "forest", "blandskog": "mixed forest", "blandad": "mixed", "löv": "deciduous leaves litter",
+    "barr": "coniferous needles", "äng": "meadows", "hage": "pasture grassland", "bete": "pasture grazed",
+    "mark": "soil", "gräsmatta": "lawns", "park": "parks", "trädgård": "gardens", "väg": "roadsides",
+    "vägkant": "roadsides", "myr": "bogs", "mosse": "bogs Sphagnum", "kärr": "fens", "buske": "shrubs",
+    "buskage": "shrubs", "gödsel": "dung manure", "dynga": "dung", "sand": "sandy", "kalk": "calcareous",
+    "stam": "stem", "stjälk": "stem", "gälar": "gills", "lameller": "gills", "kant": "margin",
+    "mitt": "centre", "vår": "spring", "ätbar": "edible",
+    # surface and veil
+    "flaga": "veil fragments", "flagor": "veil fragments", "prickar": "dots", "ränder": "striate",
+    "randig": "striate", "strimmig": "striate", "strimmor": "striate", "räfflad": "sulcate striate",
+    "fårad": "sulcate", "slät": "smooth glabrous", "glansig": "shiny", "matt": "dull",
+    "rynkad": "wrinkled rugose", "spricker": "cracking", "sprucken": "cracked", "genomskinlig": "translucent striate",
+    "torr": "dry", "fuktig": "moist", "blöt": "moist", "våt": "moist", "fibrig": "fibrillose",
+    "fibrilig": "fibrillose", "trådig": "fibrillose", "skör": "brittle", "seg": "tough", "luden": "hairy",
+    "hårig": "hairy", "ullig": "woolly", "tunn": "thin", "tjock": "thick", "ihålig": "hollow", "lång": "long",
+    "rest": "remnants", "rester": "remnants", "slöja": "veil cortina", "spindelväv": "cortina",
+    "vulst": "bulb", "säck": "volva", "nät": "net", "nätad": "net", "ådrad": "net",
+    # gills and shape
+    "tät": "crowded", "täta": "crowded", "trång": "crowded", "trånga": "crowded", "gles": "distant",
+    "glesa": "distant", "nedlöpande": "decurrent", "nerlöpande": "decurrent", "utlöpande": "decurrent",
+    "löper": "decurrent", "löpte": "decurrent", "fria": "free", "grenade": "forked", "gaffelgrenade": "forked",
+    "ådror": "veins ridges", "åsar": "ridges", "tratt": "funnel", "trattformad": "funnel",
+    "kägelformad": "conical", "konisk": "conical", "klockformad": "campanulate", "puckel": "umbo",
+    "välvd": "convex", "platt": "plane", "nedsänkt": "depressed", "cylindrisk": "cylindrical",
+    "äggformad": "ovoid", "oregelbunden": "irregular", "oregelbundna": "irregular", "klubbformad": "clavate",
+    # smell, taste, colour changes
+    "anis": "anise", "mjöl": "mealy", "mjölig": "mealy", "rättika": "radish", "gurka": "cucumber",
+    "klor": "chlorine", "fruktig": "fruity", "honung": "honey", "mandel": "almond", "obehaglig": "unpleasant",
+    "illa": "unpleasant", "kryddig": "spicy", "söt": "sweet", "jod": "iodine", "karbol": "carbolic",
+    "bläck": "ink", "gulnar": "yellowing", "rodnar": "reddening", "svartnar": "blackening",
+    "brunnar": "browning", "missfärgas": "discolouring", "flyter": "deliquescent", "upplöses": "deliquescent",
+    # colours and colour parts of compounds ("blekgråblå", "olivgrön", "krämvit")
+    "blek": "pale", "ljus": "pale", "mörk": "dark", "kräm": "cream", "elfenben": "ivory", "blå": "blue",
+    "rött": "red", "grått": "grey", "ockra": "ochre", "rost": "rust", "purpur": "purple", "oliv": "olive",
+    "tegel": "brick", "färg": "colour",
+    # compound parts with no book term of their own
+    "aktig": "", "färgad": "", "träd": "", "mönster": "", "häst": "", "stack": "", "saft": "", "gammal": "",
+    "röra": "", "rört": "", "rörde": "",
 }
+
+# tried on words not in _VOCAB_SV, longest first: "granarna" -> "gran", "luktade" -> "lukt"
+_SV_ENDINGS = ("arna", "erna", "orna", "ade", "en", "et", "na", "ar", "er", "or", "tt", "a", "e", "n", "t")
 
 _SV_MARKERS = {"och", "med", "som", "hatt", "hatten", "skivor", "foten", "jag", "vilken", "eller", "svamp"}
 
@@ -222,6 +265,35 @@ def _is_swedish(lower: str, words: list[str]) -> bool:
     return bool(re.search(r"[åäö]", lower)) or bool(_SV_MARKERS.intersection(words))
 
 
+def _sv_base(w: str) -> str | None:
+    if w in _VOCAB_SV:
+        return w
+    for e in _SV_ENDINGS:
+        if w.endswith(e) and len(w) - len(e) >= 3 and w[:-len(e)] in _VOCAB_SV:
+            return w[:-len(e)]
+    return None
+
+
+@lru_cache(maxsize=4096)
+def _sv_terms(w: str) -> tuple[str, ...] | None:
+    """Terms for a Swedish word read as a known word, an inflected form or a compound.
+
+    A compound is split only when every part is known ("granskogen" -> gran + skog,
+    "gulbrun" -> gul + brun, "betesmark" -> bete(s) + mark), so "bokstav" stays unread.
+    """
+    base = _sv_base(w)
+    if base:
+        return (_VOCAB_SV[base],)
+    for i in range(len(w) - 2, 1, -1):
+        head, tail = w[:i], w[i:]
+        if head not in _VOCAB_SV and not (head.endswith("s") and head[:-1] in _VOCAB_SV):
+            continue
+        rest = _sv_terms(tail)
+        if rest is not None:
+            return (_VOCAB_SV[head] if head in _VOCAB_SV else _VOCAB_SV[head[:-1]],) + rest
+    return None
+
+
 def expand_query(query: str) -> str:
     """Append the book's terms for everyday/Swedish words found in the query."""
     lower = query.lower()
@@ -238,11 +310,14 @@ def expand_query(query: str) -> str:
             extra.append(_MORPH[w])
         if w in _VOCAB:
             extra.append(_VOCAB[w])
-        elif swedish and w in _VOCAB_SV:
-            extra.append(_VOCAB_SV[w])
+        elif swedish:
+            for term in _sv_terms(w) or ():
+                extra.append(term)
+                # "nät" -> "net" -> "reticulum reticulate"
+                extra.extend(_MORPH.get(t) or _VOCAB.get(t) or "" for t in term.split())
     if "spore print" in query.lower():
         extra.append("sp deposit")
-    extra = [e for e in dict.fromkeys(extra) if e.lower() not in query.lower()]
+    extra = [e for e in dict.fromkeys(extra) if e and e.lower() not in query.lower()]
     return f"{query} ({', '.join(extra)})" if extra else query
 
 
