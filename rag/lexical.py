@@ -147,6 +147,15 @@ _MORPH = {
     "meadows": "grassland meadows", "pointed": "umbo umbonate papilla", "umbo": "umbonate",
     "lawn": "grass lawns", "grass": "grassland lawns meadows", "grassy": "grassland lawns meadows",
     "park": "parks lawns grassland", "parks": "parks lawns grassland",
+    "flakes": "veil fragments patches", "flaky": "veil fragments patches", "flecks": "veil fragments patches",
+    "specks": "veil fragments patches", "patches": "veil fragments", "fuzzy": "tomentose",
+    "spaced": "distant", "apart": "distant", "running": "decurrent", "runs": "decurrent",
+    "fades": "hygrophanous", "faded": "hygrophanous", "fading": "hygrophanous", "drying": "hygrophanous",
+    "bump": "umbo umbonate", "knob": "umbo umbonate", "strands": "rhizomorphs mycelial cords",
+    "cords": "rhizomorphs mycelial cords", "skirt": "ring", "sac": "volva", "cup": "volva",
+    "striations": "striate", "grooved": "sulcate striate", "wrinkled": "rugose", "beige": "buff",
+    "bruises": "bruised", "bruising": "bruised", "aniseed": "anise", "forked": "forked dichotomous",
+    "shiny": "glabrous", "fishy": "fishy", "scurfy": "furfuraceous",
 }
 
 # common English and Swedish names -> Funga Nordica names; matched as phrases
