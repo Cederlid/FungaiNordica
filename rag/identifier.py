@@ -183,7 +183,9 @@ def _species_characters(collection, name: str, text: str, meta: dict) -> dict:
 
     Leads high in a key cover many species ("Frb bright red, bright orange or yellow, but
     cap in a few species dark brown"), so a character comes from the description when it
-    gives one, else from the lead nearest the species.
+    gives one, else from the lead nearest the species. Gill attachment and spacing and the
+    cap surface may come last from the genus introduction ("gills strongly decurrent");
+    its colours span the whole genus and would agree with almost any report.
     """
     if name not in _characters_cache:
         leads = [re.sub(r"^[^:]*:\s*", "", s).split(" → ")[0] for s in key_path(collection, meta)
@@ -192,6 +194,10 @@ def _species_characters(collection, name: str, text: str, meta: dict) -> dict:
         for lead in reversed(leads):
             for key, values in description_characters(lead).items():
                 found.setdefault(key, values)
+        for intro in _genus_intro(collection, meta.get("genus", "")):
+            for key, values in description_characters(intro).items():
+                if key[1] != "colour" and key[0] != "smell":
+                    found.setdefault(key, values)
         _characters_cache[name] = found
     return _characters_cache[name]
 
