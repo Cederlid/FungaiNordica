@@ -150,15 +150,16 @@ def user_characters(query: str) -> tuple[dict, dict]:
             other = bool(_OTHER.intersection(tokens[j]))
             if part or other:
                 break
-        if other:
-            continue
-        if not part:
+        if not part and not other:
             for j in range(i - 1, -1, -1):
                 if not tokens[j][0].isalpha() and tokens[j][0] != ",":
                     break
                 part = next((_PARTS[w] for w in tokens[j] if w in _PARTS), "")
-                if part:
+                other = bool(_OTHER.intersection(tokens[j]))  # "the spore print was white"
+                if part or other:
                     break
+        if other:
+            continue
         before = {w for t in tokens[max(0, i - 2):i] for w in t}
         neg = bool(_NOT & before)
         for kind, value in dict.fromkeys(vals):
