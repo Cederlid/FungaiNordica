@@ -114,7 +114,8 @@ _VOCAB_SV = {
 # tried on words not in _VOCAB_SV, longest first: "granarna" -> "gran", "luktade" -> "lukt"
 _SV_ENDINGS = ("arna", "erna", "orna", "ade", "en", "et", "na", "ar", "er", "or", "tt", "a", "e", "n", "t")
 
-_SV_MARKERS = {"och", "med", "som", "hatt", "hatten", "skivor", "foten", "jag", "vilken", "eller", "svamp"}
+_SV_MARKERS = {"och", "med", "som", "hatt", "hatten", "skivor", "foten", "jag", "vilken", "eller", "svamp",
+               "svampen", "svampar", "hittade", "hittat", "hittar", "vad", "den", "det", "vid", "bland"}
 
 _STOP = {
     "the", "a", "an", "is", "are", "and", "or", "of", "to", "in", "on", "with", "for",
@@ -207,7 +208,7 @@ _NAMES = {
     "stensopp": "Boletus edulis", "karljohan": "Boletus edulis", "gallsopp": "Tylopilus felleus",
     "smörsopp": "Suillus luteus", "grynsopp": "Suillus granulatus", "lärksopp": "Suillus grevillei",
     "tegelsopp": "Leccinum versipelle", "björksopp": "Leccinum scabrum", "aspsopp": "Leccinum aurantiacum",
-    "falsk kantarell": "Hygrophoropsis aurantiaca", "honungsskivling": "Armillaria",
+    "narrkantarell": "Hygrophoropsis aurantiaca", "falsk kantarell": "Hygrophoropsis aurantiaca", "honungsskivling": "Armillaria",
     "ametistskivling": "Laccaria amethystina", "laxskivling": "Laccaria laccata",
     "pudrad trattskivling": "Clitocybe nebularis", "anistrattskivling": "Clitocybe odora",
     "nejlikbrosking": "Marasmius oreades", "vinterskivling": "Flammulina velutipes",
@@ -315,11 +316,14 @@ def _sv_terms(w: str) -> tuple[str, ...] | None:
 def _name_phrases(lower: str) -> tuple[list[tuple[str, str]], str]:
     """(name, taxon) for the _NAMES phrases in a lowercased query, and the query without them."""
     # longest names first, so "false death cap" is not also read as "death cap"
+    # inflected too: "narrkantarellen", "stensoppar", "death caps"
+    endings = "|".join(_SV_ENDINGS + ("s",))
     found, rest = [], lower
     for name in sorted(_NAMES, key=len, reverse=True):
-        if re.search(rf"(?<![a-zà-ÿ]){re.escape(name)}(?![a-zà-ÿ])", rest):
+        pattern = rf"(?<![a-zà-ÿ]){re.escape(name)}(?:{endings})?(?![a-zà-ÿ])"
+        if re.search(pattern, rest):
             found.append((name, _NAMES[name]))
-            rest = rest.replace(name, " ")
+            rest = re.sub(pattern, " ", rest)
     return found, rest
 
 
