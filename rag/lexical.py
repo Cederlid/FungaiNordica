@@ -154,8 +154,11 @@ _MORPH = {
     "pores": "tubes", "funnel": "infundibuliform", "radish": "raphanoid", "mealy": "farinaceous",
     "floury": "farinaceous", "peppery": "acrid", "hot": "acrid", "stumps": "wood", "roadsides": "roadsides",
     "roads": "roadsides", "conifers": "coniferous", "conifer": "coniferous", "lawns": "grass lawns",
-    "meadows": "grassland meadows", "pointed": "umbo umbonate papilla", "umbo": "umbonate",
+    "meadows": "seminatural grassland meadows", "meadow": "seminatural grassland meadows",
+    "pasture": "seminatural grassland pastures", "pastures": "seminatural grassland pastures", "pointed": "umbo umbonate papilla", "umbo": "umbonate",
     "lawn": "grass lawns", "grass": "grassland lawns meadows", "grassy": "grassland lawns meadows",
+    # the book's names for shades: "red" alone misses "scarlet" and "blood red" caps
+    "red": "scarlet", "reddish": "scarlet", "crimson": "scarlet",
     "park": "parks lawns grassland", "parks": "parks lawns grassland",
     "flakes": "veil fragments patches", "flaky": "veil fragments patches", "flecks": "veil fragments patches",
     "specks": "veil fragments patches", "patches": "veil fragments", "fuzzy": "tomentose",
