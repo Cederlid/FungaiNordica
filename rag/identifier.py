@@ -1,6 +1,7 @@
 import re
 
 from rag.keypath import _couplets, key_path, species_index
+from rag.characters import character_score, compare, description_characters, user_characters
 from rag.lexical import common_names
 from rag.vectorstore import get_collection, query_chunks
 from rag.llm import identify as llm_identify, identify_stream as llm_identify_stream
@@ -13,6 +14,12 @@ _POOL = 100  # ranked chunks searched for the best species of a genus a couplet 
 # genus introductions hold characters the species descriptions leave out (gill
 # colour, spore deposit, habitat); the first chunks cover them
 _INTRO_CHUNKS = 2
+# a candidate's place in the search order counts 1 / (_RRF_K + place); each point of
+# character agreement adds _CHAR_WEIGHT, so a confirmed cap colour (3 points) lifts a
+# species about six places near the top and a contradicted one sinks it as far
+# (0.0003-0.0007 scored the same on the test descriptions)
+_CHAR_WEIGHT = 0.0005
+_CHAR_GENERA = 3  # all species of the best-ranked genera are scored on characters
 
 # spore deposit colour words -> the Key to genera sections they allow (C white to
 # very pale pinkish, D pink, E greenish, F pale to dull brown, G very dark brown to black)
@@ -167,6 +174,44 @@ def _name_notes(collection, species: dict, features: str) -> list[str]:
     return notes
 
 
+_characters_cache = {}  # species -> characters from its description and key leads
+
+
+def _species_characters(collection, name: str, text: str, meta: dict) -> dict:
+    """Characters from the description, completed from the genus-key leads on the way to the
+    species ("Cap moist, sticky or slimy", "Gills adnate to decurrent").
+
+    Leads high in a key cover many species ("Frb bright red, bright orange or yellow, but
+    cap in a few species dark brown"), so a character comes from the description when it
+    gives one, else from the lead nearest the species.
+    """
+    if name not in _characters_cache:
+        leads = [re.sub(r"^[^:]*:\s*", "", s).split(" → ")[0] for s in key_path(collection, meta)
+                 if not s.startswith("Key to genera")]
+        found = description_characters(text)
+        for lead in reversed(leads):
+            for key, values in description_characters(lead).items():
+                found.setdefault(key, values)
+        _characters_cache[name] = found
+    return _characters_cache[name]
+
+
+def _by_characters(collection, species: dict, names: list[str], features: str) -> list[str]:
+    """The candidates, plus every species of the best-ranked genera, reordered by search
+    place and by how well each description matches the reported characters."""
+    user = user_characters(features)
+    if not any(user):
+        return names
+    genera = list(dict.fromkeys(species[n][1]["genus"] for n in names))[:_CHAR_GENERA]
+    pool = names + [n for n, (_, m) in species.items() if m["genus"] in genera and n not in names]
+    place = {n: i for i, n in enumerate(names)}
+    def score(n):
+        text, meta = species[n]
+        chars = _species_characters(collection, n, text, meta)
+        return 1 / (_RRF_K + place.get(n, len(names))) + _CHAR_WEIGHT * character_score(user, chars)
+    return sorted(pool, key=score, reverse=True)
+
+
 def identification_context(features: str, n_results: int = _N_RESULTS) -> list[str]:
     """Retrieved chunks plus, for each top species candidate, its description and key path.
 
@@ -178,12 +223,18 @@ def identification_context(features: str, n_results: int = _N_RESULTS) -> list[s
     collection = get_collection()
     species = species_index(collection)
     allowed = _deposit_keys(features)
+    user = user_characters(features)
     genera = set()  # genera whose introduction is already included
     shown = {}  # key-path step -> candidate whose path first showed it
     kept, ruled_out = 0, []
     # scored on the best chunks; the rest of the pool fills places the spore filter frees
     names = _candidates(ranked[:_SCORED], species, ranked) + _candidates(ranked, species)
-    for name in dict.fromkeys(names):
+    names = _by_characters(collection, species, list(dict.fromkeys(names)), features)
+    # a species the user names ("blodhätta") is a candidate whatever the search found
+    named = [n for _, taxon in common_names(features) if " " in taxon
+             for n in species if n == taxon or n.startswith(taxon + " ")]
+    names = list(dict.fromkeys(named[:1] * bool(named) + names))
+    for name in names:
         if kept == _MAX_CANDIDATES:
             break
         text, meta = species[name]
@@ -198,6 +249,9 @@ def identification_context(features: str, n_results: int = _N_RESULTS) -> list[s
         genera.add(meta["genus"])
         if text not in docs:
             docs.append(text)
+        match = compare(user, _species_characters(collection, name, text, meta)) if any(user) else ""
+        if match:
+            docs.append(f"User's characters against {name} (description and key leads): {match}")
         # paths share their start (the Key to genera, a genus key): show each step once
         same = 0
         while same < len(steps) and steps[same] in shown:

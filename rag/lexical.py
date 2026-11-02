@@ -76,8 +76,8 @@ _VOCAB_SV = {
     "mark": "soil", "gräsmatta": "lawns", "park": "parks", "trädgård": "gardens", "väg": "roadsides",
     "vägkant": "roadsides", "myr": "bogs", "mosse": "bogs Sphagnum", "kärr": "fens", "buske": "shrubs",
     "buskage": "shrubs", "gödsel": "dung manure", "dynga": "dung", "sand": "sandy", "kalk": "calcareous",
-    "stam": "stem", "stjälk": "stem", "gälar": "gills", "lameller": "gills", "kant": "margin",
-    "mitt": "centre", "vår": "spring", "ätbar": "edible",
+    "stam": "stem", "stjälk": "stem", "gälar": "gills", "gällar": "gills", "lameller": "gills", "kant": "margin",
+    "mitt": "centre", "saft": "juice", "vår": "spring", "ätbar": "edible",
     # surface and veil
     "flaga": "veil fragments", "flagor": "veil fragments", "prickar": "dots", "ränder": "striate",
     "randig": "striate", "strimmig": "striate", "strimmor": "striate", "räfflad": "sulcate striate",
@@ -107,7 +107,7 @@ _VOCAB_SV = {
     "rött": "red", "grått": "grey", "ockra": "ochre", "rost": "rust", "purpur": "purple", "oliv": "olive",
     "tegel": "brick", "färg": "colour",
     # compound parts with no book term of their own
-    "aktig": "", "färgad": "", "träd": "", "mönster": "", "häst": "", "stack": "", "saft": "", "gammal": "",
+    "aktig": "", "färgad": "", "träd": "", "mönster": "", "häst": "", "stack": "", "gammal": "",
     "röra": "", "rört": "", "rörde": "",
 }
 
