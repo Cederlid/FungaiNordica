@@ -76,6 +76,9 @@ _VOCAB_SV = {
     "mark": "soil", "gräsmatta": "lawns", "park": "parks", "trädgård": "gardens", "väg": "roadsides",
     "vägkant": "roadsides", "myr": "bogs", "mosse": "bogs Sphagnum", "kärr": "fens", "buske": "shrubs",
     "buskage": "shrubs", "gödsel": "dung manure", "dynga": "dung", "sand": "sandy", "kalk": "calcareous",
+    "spillning": "dung", "sågspån": "sawdust", "spån": "sawdust chips", "gren": "branches",
+    "kvist": "twigs", "låga": "log", "lågor": "logs", "trädstam": "trunk", "trädstammar": "trunks",
+    "brandfält": "burnt", "brandplats": "burnt", "bränd": "burnt",
     "stam": "stem", "stjälk": "stem", "gälar": "gills", "gällar": "gills", "lameller": "gills", "kant": "margin",
     "mitt": "centre", "saft": "juice", "vår": "spring", "ätbar": "edible",
     # surface and veil

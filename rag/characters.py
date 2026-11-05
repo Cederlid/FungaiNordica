@@ -3,9 +3,10 @@
 Text search finds species whose description shares words with the question, but
 it does not know which part a word belongs to: "red cap, white gills" matches a
 species with white cap and red gills as well as the right one. Here both sides are
-read as characters per part (cap, gills, stem, flesh colour; gill attachment and
-spacing; cap surface; smell), so a candidate gains for each reported character
-its description confirms and loses for each it contradicts.
+read as characters per part (cap, gills, stem, flesh and milk colour; gill
+attachment and spacing; cap surface and shape; ring and volva; smell; substrate and
+host trees), so a candidate gains for each reported character its description
+confirms and loses for each it contradicts.
 """
 import re
 
@@ -52,31 +53,96 @@ _SMELLS = {"farinaceous": "farinaceous", "mealy": "farinaceous", "raphanoid": "r
            "carbolic": "carbolic", "phenol": "carbolic", "ink": "carbolic", "sweetish": "sweet",
            "sweet": "sweet", "nauseous": "unpleasant", "unpleasant": "unpleasant",
            "indistinct": "indistinct", "insignificant": "indistinct", "absent": "indistinct"}
+_SHAPES = {"infundibuliform": "funnel", "funnel": "funnel", "depressed": "funnel", "conical": "conical",
+           "conic": "conical", "cone": "conical", "campanulate": "conical", "bell": "conical",
+           "umbonate": "umbonate", "umbo": "umbonate", "papillate": "umbonate"}
+# where a fruitbody grows; the book names hosts by genus ("with Betula")
+_SUBSTRATES = {"wood": "wood", "lignicolous": "wood", "stump": "wood", "stumps": "wood", "log": "wood",
+               "logs": "wood", "trunk": "wood", "trunks": "wood", "branches": "wood", "twigs": "wood",
+               "twig": "wood", "sticks": "wood", "bark": "wood", "timber": "wood", "sawdust": "wood",
+               "chips": "wood", "moss": "moss", "mosses": "moss", "mossy": "moss", "sphagnum": "moss",
+               "dung": "dung", "manure": "dung", "droppings": "dung", "grass": "grass",
+               "grassland": "grass", "grasslands": "grass", "lawn": "grass", "lawns": "grass",
+               "meadow": "grass", "meadows": "grass", "pasture": "grass", "pastures": "grass",
+               "grassy": "grass", "burnt": "burnt", "burned": "burnt", "charred": "burnt",
+               "sand": "sand", "sandy": "sand", "dunes": "sand", "ground": "ground", "soil": "ground",
+               "terrestrial": "ground", "terricolous": "ground"}
+_CONIFERS = {"pinus", "picea", "larix", "abies", "juniperus", "pseudotsuga"}
+_DECIDUOUS = {"betula", "fagus", "quercus", "populus", "salix", "alnus", "corylus", "tilia", "carpinus",
+              "fraxinus", "sorbus", "ulmus", "acer", "dryas", "helianthemum"}
+_HOSTS = {**{h: h for h in _CONIFERS | _DECIDUOUS},
+    "coniferous": "conifer", "conifers": "conifer", "conifer": "conifer", "deciduous": "deciduous",
+    "frondose": "deciduous", "broadleaved": "deciduous"}
 # words naming the part a description segment is about
 _PARTS = {"cap": "cap", "caps": "cap", "pileus": "cap", "frb": "cap", "mushroom": "cap",
           "fungus": "cap", "gills": "gills", "gill": "gills", "lamellae": "gills", "stem": "stem",
           "stems": "stem", "stipe": "stem", "stalk": "stem", "flesh": "flesh", "context": "flesh",
-          "smell": "smell", "smells": "smell", "odour": "smell", "odor": "smell"}
+          "smell": "smell", "smells": "smell", "odour": "smell", "odor": "smell", "milk": "milk",
+          "latex": "milk", "juice": "milk", "tubes": "gills", "pores": "gills", "pore": "gills"}
 # nouns whose colour is not a part's colour: "white warts", "brown spore print"
 _OTHER = {"warts", "wart", "scales", "scale", "flakes", "flake", "patches", "fragments", "remnants",
           "spots", "dots", "ring", "veil", "volva", "fibrils", "squamules", "spores", "spore", "sp",
-          "print", "deposit", "milk", "juice", "latex", "tubes", "pores", "mycelium", "base", "bulb"}
+          "print", "deposit", "mycelium", "base", "bulb"}
 _STOP_AHEAD = {"and", "with", "och", "med", "but", "men"}
-_NOT = {"not", "never", "without", "no", "inte", "ej", "inget", "ingen", "aldrig", "utan"}
-_PART_ONLY = {"attach": "gills", "spacing": "gills", "smell": "smell"}
+_NOT = {"not", "never", "without", "no", "lacks", "lacked", "lacking", "inte", "ej", "inget", "ingen",
+        "aldrig", "utan", "saknade", "saknar"}
+_PART_ONLY = {"attach": "gills", "spacing": "gills", "smell": "smell", "shape": "cap"}
+_COLOUR_PARTS = ("cap", "gills", "stem", "flesh", "milk")
 # weight of each character when it agrees with (+) or contradicts (-) a description
 _WEIGHTS = {("cap", "colour"): 3.0, ("gills", "colour"): 2.0, ("stem", "colour"): 1.5,
-            ("flesh", "colour"): 1.0, ("gills", "attach"): 1.5, ("gills", "spacing"): 1.0,
-            ("cap", "surface"): 1.0, ("smell", "smell"): 1.5}
+            ("flesh", "colour"): 1.0, ("milk", "colour"): 2.5, ("gills", "attach"): 1.5,
+            ("gills", "spacing"): 1.0, ("cap", "surface"): 1.0, ("cap", "shape"): 1.0,
+            ("smell", "smell"): 1.5, ("stem", "ring"): 2.0, ("stem", "volva"): 2.0,
+            ("habitat", "substrate"): 2.0, ("habitat", "host"): 1.5}
+# substrates one report may give for another: moss and grass grow on soil, dung lies in pastures
+_NEAR_SUBSTRATE = {frozenset(p) for p in (("ground", "moss"), ("ground", "grass"), ("ground", "sand"),
+                                           ("ground", "burnt"), ("grass", "dung"), ("grass", "moss"),
+                                           ("sand", "moss"), ("sand", "grass"))}
+_NEAR_BY_KIND = {"colour": _NEAR, "substrate": _NEAR_SUBSTRATE}
+# a description lists only some of a fruitbody's shapes as it ages: a shape never contradicts
+_NO_CONTRADICTION = {("cap", "shape")}
 
 
 def _values(word: str) -> list[tuple[str, str]]:
     """(kind, value) for one English word."""
     out = [("colour", c) for c in _COLOUR_WORDS.get(word, "").split()]
-    for kind, table in (("attach", _ATTACH), ("spacing", _SPACING), ("surface", _SURFACE), ("smell", _SMELLS)):
+    for kind, table in (("attach", _ATTACH), ("spacing", _SPACING), ("surface", _SURFACE),
+                        ("smell", _SMELLS), ("shape", _SHAPES)):
         if word in table:
             out.append((kind, table[word]))
     return out
+
+
+def _habitat(words: list[str]) -> dict:
+    """{("habitat", "substrate"|"host"): {values}}; a host genus also counts as conifer or deciduous."""
+    found = {}
+    for i, w in enumerate(words):
+        if w == "ground" and i and (words[i - 1] in _COLOUR_WORDS or words[i - 1] in ("pale", "dark")):
+            continue  # "fibrils on a pale ground": the background colour
+        if w in _SUBSTRATES:
+            found.setdefault(("habitat", "substrate"), set()).add(_SUBSTRATES[w])
+        if w in _HOSTS:
+            host = found.setdefault(("habitat", "host"), set())
+            host.add(_HOSTS[w])
+            if w in _CONIFERS:
+                host.add("conifer")
+            elif w in _DECIDUOUS:
+                host.add("deciduous")
+    return found
+
+
+def _veil(words: list[str]) -> dict:
+    """{("stem", "ring"|"volva"): {"yes"|"no"}}: "ring membranous", "without ring", "no volva"."""
+    found = {}
+    for i, w in enumerate(words):
+        kind = {"ring": "ring", "annulus": "ring", "annular": "ring", "skirt": "ring", "volva": "volva",
+                "volval": "volva", "sac": "volva"}.get(w)
+        if kind:
+            neg = _NOT.intersection(words[max(0, i - 3):i]) or words[i + 1:i + 2] == ["absent"]
+            found.setdefault(("stem", kind), set()).add("no" if neg else "yes")
+        elif w in ("exannulate", "exannulated"):
+            found.setdefault(("stem", "ring"), set()).add("no")
+    return found
 
 
 def _segments(text: str) -> list[str]:
@@ -95,9 +161,11 @@ def description_characters(text: str) -> dict:
         words = re.findall(r"[a-z]+", seg.lower())
         if not words:
             continue
+        for key, values in {**_habitat(words), **_veil(words)}.items():
+            found.setdefault(key, set()).update(values)
         if words[0] in _PARTS:
             part = _PARTS[words[0]]
-        elif words[0] in ("sp", "spores", "taste", "milk", "ring", "veil", "universal", "pileipellis",
+        elif words[0] in ("sp", "spores", "taste", "ring", "veil", "universal", "pileipellis",
                           "cheilocystidia", "pleurocystidia", "basidia", "hyphae", "clamps", "on", "in",
                           "under", "with"):
             part = ""  # microscopy, habitat etc.: no part characters
@@ -115,13 +183,14 @@ def description_characters(text: str) -> dict:
     return found
 
 
-def _english(word: str, swedish: bool) -> list[str]:
-    """The word and its English/book equivalents ("glesa" -> distant, "spaced" -> distant)."""
+def _english(word: str, swedish: bool, book: bool = True) -> list[str]:
+    """The word and its English/book equivalents ("glesa" -> distant, "spaced" -> distant);
+    book=False stops at the English word ("sopp" -> bolete, not on to "tubes")."""
     out = [word]
     if swedish:
         for term in _sv_terms(word) or ():
-            out += term.split()
-    for w in list(out):
+            out += term.lower().split()
+    for w in list(out) if book else ():
         out += (_MORPH.get(w, "") + " " + _VOCAB.get(w, "")).lower().split()
     return out
 
@@ -137,6 +206,8 @@ def user_characters(query: str) -> tuple[dict, dict]:
     raw = re.findall(r"[a-zà-ÿ]+|[,.;!?\n]", lower)
     swedish = _is_swedish(lower, [w for w in raw if w.isalpha()])
     tokens = [[t] if not t.isalpha() else _english(t, swedish) for t in raw]
+    # the part a word names: "bolete" expands to the book's "tubes" but names no part
+    names = [[t] if not t.isalpha() else _english(t, swedish, book=False) for t in raw]
     found, negated = {}, {}
     for i, tok in enumerate(tokens):
         vals = [v for w in tok for v in _values(w)]
@@ -146,7 +217,7 @@ def user_characters(query: str) -> tuple[dict, dict]:
         for j in range(i + 1, min(i + 4, len(tokens))):
             if not tokens[j][0].isalpha() or tokens[j][0] in _STOP_AHEAD:
                 break
-            part = next((_PARTS[w] for w in tokens[j] if w in _PARTS), "")
+            part = next((_PARTS[w] for w in names[j] if w in _PARTS), "")
             other = bool(_OTHER.intersection(tokens[j]))
             if part or other:
                 break
@@ -154,7 +225,7 @@ def user_characters(query: str) -> tuple[dict, dict]:
             for j in range(i - 1, -1, -1):
                 if not tokens[j][0].isalpha() and tokens[j][0] != ",":
                     break
-                part = next((_PARTS[w] for w in tokens[j] if w in _PARTS), "")
+                part = next((_PARTS[w] for w in names[j] if w in _PARTS), "")
                 other = bool(_OTHER.intersection(tokens[j]))  # "the spore print was white"
                 if part or other:
                     break
@@ -163,13 +234,16 @@ def user_characters(query: str) -> tuple[dict, dict]:
         before = {w for t in tokens[max(0, i - 2):i] for w in t}
         neg = bool(_NOT & before)
         for kind, value in dict.fromkeys(vals):
-            p = _PART_ONLY.get(kind) or (part if part in ("cap", "gills", "stem", "flesh") else "cap")
+            p = _PART_ONLY.get(kind) or (part if part in _COLOUR_PARTS else "cap")
             if kind == "smell" and neg:  # "no distinct smell", "luktar inget speciellt"
                 found.setdefault(("smell", "smell"), set()).add("indistinct")
                 continue
             (negated if neg else found).setdefault((p, kind), set()).add(value)
         if part == "smell" and neg and not any(k == "smell" for k, _ in vals):
             found.setdefault(("smell", "smell"), set()).add("indistinct")
+    words = [w for t in tokens for w in t]
+    for key, values in {**_habitat(words), **_veil([t[-1] for t in tokens])}.items():
+        found.setdefault(key, set()).update(values)
     # "luktar inget speciellt", "no smell": a negated smell word without a smell value
     for i, tok in enumerate(tokens):
         if "smell" in tok and _NOT & {w for t in tokens[i + 1:i + 3] + tokens[max(0, i - 2):i] for w in t}:
@@ -190,7 +264,8 @@ def _verdicts(user: tuple[dict, dict], species: dict):
             yield key, values, have, 1 if "indistinct" in have else -1
         elif values & have:
             yield key, values, have, 1
-        elif key[1] == "colour" and any(frozenset((u, h)) in _NEAR for u in values for h in have):
+        elif key in _NO_CONTRADICTION or any(frozenset((u, h)) in _NEAR_BY_KIND.get(key[1], ())
+                                             for u in values for h in have):
             yield key, values, have, 0
         else:
             yield key, values, have, -1
@@ -203,6 +278,8 @@ def _verdicts(user: tuple[dict, dict], species: dict):
 def character_score(user: tuple[dict, dict], species: dict) -> float:
     """Sum of weights: + for each reported character the description confirms, - for each it
     contradicts; characters the description does not give count 0."""
+    # (counting a description that names many colours for less scored worse: terse
+    # descriptions name few, not distinctive ones)
     return sum(_WEIGHTS.get(key, 1.0) * v for key, _, _, v in _verdicts(user, species))
 
 

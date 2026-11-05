@@ -16,10 +16,16 @@ _POOL = 100  # ranked chunks searched for the best species of a genus a couplet 
 _INTRO_CHUNKS = 2
 # a candidate's place in the search order counts 1 / (_RRF_K + place); each point of
 # character agreement adds _CHAR_WEIGHT, so a confirmed cap colour (3 points) lifts a
-# species about six places near the top and a contradicted one sinks it as far
-# (0.0003-0.0007 scored the same on the test descriptions)
-_CHAR_WEIGHT = 0.0005
-_CHAR_GENERA = 3  # all species of the best-ranked genera are scored on characters
+# species about four places near the top and a contradicted one sinks it as far
+_CHAR_WEIGHT = 0.0003
+# every species in the book is also ranked by character score alone, a third channel
+# beside the embedding and BM25 search: a species the search missed enters when few
+# others match as well. Species with the same score share the middle place of their
+# group, so "brown cap" (hundreds of ties) adds next to nothing. On the test descriptions
+# 0.0002-0.0004 / 0.2-0.4 scored alike: top-1 35 -> 42 of 85, top-6 63 -> 67
+_CHAR_RANK_WEIGHT = 0.3
+_CHAR_GENERA = 3  # the other species of the best-ranked genera count as found at the end of the search
+_GENUS_WIDE = {"attach", "spacing", "surface"}  # characters a genus introduction may give a species
 
 # spore deposit colour words -> the Key to genera sections they allow (C white to
 # very pale pinkish, D pink, E greenish, F pale to dull brown, G very dark brown to black)
@@ -185,7 +191,7 @@ def _species_characters(collection, name: str, text: str, meta: dict) -> dict:
     cap in a few species dark brown"), so a character comes from the description when it
     gives one, else from the lead nearest the species. Gill attachment and spacing and the
     cap surface may come last from the genus introduction ("gills strongly decurrent");
-    its colours span the whole genus and would agree with almost any report.
+    its colours and habitats span the whole genus and would agree with almost any report.
     """
     if name not in _characters_cache:
         leads = [re.sub(r"^[^:]*:\s*", "", s).split(" → ")[0] for s in key_path(collection, meta)
@@ -196,26 +202,36 @@ def _species_characters(collection, name: str, text: str, meta: dict) -> dict:
                 found.setdefault(key, values)
         for intro in _genus_intro(collection, meta.get("genus", "")):
             for key, values in description_characters(intro).items():
-                if key[1] != "colour" and key[0] != "smell":
+                if key[1] in _GENUS_WIDE:
                     found.setdefault(key, values)
         _characters_cache[name] = found
     return _characters_cache[name]
 
 
 def _by_characters(collection, species: dict, names: list[str], features: str) -> list[str]:
-    """The candidates, plus every species of the best-ranked genera, reordered by search
-    place and by how well each description matches the reported characters."""
+    """Every species in the book, ordered by search place, by character rank and by how well
+    its description matches the reported characters."""
     user = user_characters(features)
     if not any(user):
         return names
-    genera = list(dict.fromkeys(species[n][1]["genus"] for n in names))[:_CHAR_GENERA]
-    pool = names + [n for n, (_, m) in species.items() if m["genus"] in genera and n not in names]
+    chars = {n: character_score(user, _species_characters(collection, n, *species[n])) for n in species}
+    # character rank: the middle place of the species sharing a score
+    counts = {}
+    for c in chars.values():
+        counts[c] = counts.get(c, 0) + 1
+    rank, above = {}, 0
+    for c in sorted(counts, reverse=True):
+        rank[c] = above + (counts[c] + 1) / 2
+        above += counts[c]
     place = {n: i for i, n in enumerate(names)}
+    genera = list(dict.fromkeys(species[n][1]["genus"] for n in names))[:_CHAR_GENERA]
+    place.update({n: len(names) for n, (_, m) in species.items() if m["genus"] in genera and n not in place})
     def score(n):
-        text, meta = species[n]
-        chars = _species_characters(collection, n, text, meta)
-        return 1 / (_RRF_K + place.get(n, len(names))) + _CHAR_WEIGHT * character_score(user, chars)
-    return sorted(pool, key=score, reverse=True)
+        c = chars[n]
+        search = 1 / (_RRF_K + place[n] + 1) if n in place else 0.0
+        by_rank = _CHAR_RANK_WEIGHT / (_RRF_K + rank[c]) if c > 0 else 0.0
+        return search + by_rank + _CHAR_WEIGHT * c
+    return sorted(species, key=score, reverse=True)
 
 
 def identification_context(features: str, n_results: int = _N_RESULTS) -> list[str]:

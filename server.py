@@ -50,9 +50,10 @@ class ChatResponse(BaseModel):
 
 @app.on_event("startup")
 def warm_up():
-    # load the embedding model and search indexes now, not on the first question (~10 s)
+    # load the embedding model, search indexes and every species' characters now, not on
+    # the first question (~20 s); a reported character makes the whole book be scored
     if get_doc_count():
-        identification_context("warm up")
+        identification_context("red cap")
 
 
 @app.get("/")
