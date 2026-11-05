@@ -33,11 +33,12 @@ _KEY_HEADER = re.compile(r"^(?:Key [A-Z0-9]+:|Main key$)")
 _TARGET = re.compile(r"^(?:Key [A-Z0-9]+\b|see )|\bp\. \d+$")
 # "A. muscaria (L.: Fr.) Lam. var. muscaria", "L. fulvissimus Romagn.", "A. eliae Quél."
 _SPECIES = re.compile(
-    r"^(?:[A-Z]\.|[A-Z][a-z]+)\s[a-z][a-z\-]+"
-    r"(?:\s(?:var\.|f\.|subsp\.)\s[a-z][a-z\-]+)?\s+(?:\(|[A-ZÀ-Þ])"
+    r"^(?:[A-Z]\.|[A-Z][a-z]+)\s[a-z][a-zà-ÿ\-]+"  # "T. borgsjoeënse"
+    r"(?:\s(?:var\.|f\.|subsp\.)\s[a-z][a-zà-ÿ\-]+)?\s+(?:\(|[A-ZÀ-Þ])"
 )
 _AUTHORS = re.compile(r"^[A-ZÀ-Þ][A-ZÀ-Þ .,&'\-]{5,}$")
 _GENUS = re.compile(r"^([A-Z][a-z]{3,})\s+(?:\(|[A-ZÀ-Þ])[^\d;]*$")
+_FAMILY_HEAD = re.compile(r"^[A-ZÀ-Þ][A-ZÀ-Þ ,\-]{3,}:[A-ZÀ-Þ :,\-]+$")
 _PERSON = re.compile(r"^[A-ZÀ-Þ][a-zß-ÿ]+(?:[ \-][A-ZÀ-Þ][a-zß-ÿ]+)+$")
 _NOISE = [
     re.compile(r"^#+$"),
@@ -48,6 +49,8 @@ _NOISE = [
     re.compile(r"^Spores\b.*:"),
     re.compile(r"^Spores and "),
     re.compile(r"^[A-Z]: [A-Z]\. [a-z]"),
+    # a caption's continuation line: "cus, G: L. mairei, H: L. spinosulus, I: L. torminosulus."
+    re.compile(r"\b[A-Z]: [A-Z][a-z]*\.? [a-z]+.*\b[A-Z]: [A-Z][a-z]*\.? [a-z]+"),
     re.compile(r"^[A-Za-z]{1,3}$"),  # figure panel labels: "A", "B", "ch"
     # running page heads: "212 HYGROPHORACEAE: HYGROCYBE", "TRICHOLOMATACEAE: CLITOCYBE 393"
     re.compile(r"^(?:\d+ [A-Z][A-Z :,\-]{3,}|[A-Z][A-Z :,\-]{3,} \d+)$"),
@@ -65,12 +68,27 @@ def _clean_lines(text: str) -> list[str]:
             for j in (i - 1, i + 1):
                 if 0 <= j < len(lines) and _GOTO.match(lines[j]):
                     drop.add(j)
+        # "RUSSULACEAE: LACTARIUS" with the page number on the next line; read as a couplet
+        # target, the number cut the description it falls in (the number before is a target)
+        elif _FAMILY_HEAD.match(l):
+            drop.add(i)
+            if i + 1 < len(lines) and _GOTO.match(lines[i + 1]):
+                drop.add(i + 1)
     out = []
     for i, l in enumerate(lines):
         if i in drop or any(p.search(l) for p in _NOISE):
             continue
         out.append(l)
-    return out
+    # a page number left inside a paragraph ("... gills" / "679" / "crowded ..."): a couplet
+    # target is followed by "-", the next couplet or key, the page number or a figure
+    # caption, never by the rest of a sentence; the book's pages run from 40
+    def page_number(i):
+        nxt = out[i + 1] if i + 1 < len(out) else "-"
+        if nxt == "-" or _COUPLET.match(nxt) or _KEY_HEADER.match(nxt) or _GOTO.match(nxt) \
+                or nxt.startswith(("Fig", "Note")):
+            return False
+        return int(out[i]) >= 40
+    return [l for i, l in enumerate(out) if not (_GOTO.match(l) and page_number(i))]
 
 
 def _join(lines: list[str]) -> str:
