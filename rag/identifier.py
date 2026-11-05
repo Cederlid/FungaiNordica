@@ -234,6 +234,30 @@ def _by_characters(collection, species: dict, names: list[str], features: str) -
     return sorted(species, key=score, reverse=True)
 
 
+def _lead(step: str) -> str:
+    """The chosen lead of a key-path step, without the couplet and the target."""
+    return re.sub(r"^[^:]*:\s*", "", step).split(" → ")[0]
+
+
+def _deciding_steps(paths: list[tuple[str, list[str]]], rivals: int = 2) -> list[str]:
+    """For the first candidate and each of the next ones: the couplet where their key paths
+    part, with the lead each takes ("Cap dry" vs "Cap moist, sticky or slimy")."""
+    if not paths:
+        return []
+    top, top_steps = paths[0]
+    out = []
+    for name, steps in paths[1:1 + rivals]:
+        same = 0
+        while same < min(len(steps), len(top_steps)) and steps[same] == top_steps[same]:
+            same += 1
+        if same == len(steps) or same == len(top_steps):
+            continue  # one path runs on where the other ends: no shared couplet
+        where = top_steps[same].split(":")[0]
+        out.append(f"{where}: {top.split('  ')[0]}: {_lead(top_steps[same])} | "
+                   f"{name.split('  ')[0]}: {_lead(steps[same])}")
+    return out
+
+
 def identification_context(features: str, n_results: int = _N_RESULTS) -> list[str]:
     """Retrieved chunks plus, for each top species candidate, its description and key path.
 
@@ -248,7 +272,7 @@ def identification_context(features: str, n_results: int = _N_RESULTS) -> list[s
     user = user_characters(features)
     genera = set()  # genera whose introduction is already included
     shown = {}  # key-path step -> candidate whose path first showed it
-    kept, ruled_out = 0, []
+    kept, ruled_out, paths = 0, [], []
     # scored on the best chunks; the rest of the pool fills places the spore filter frees
     names = _candidates(ranked[:_SCORED], species, ranked) + _candidates(ranked, species)
     names = _by_characters(collection, species, list(dict.fromkeys(names)), features)
@@ -266,6 +290,7 @@ def identification_context(features: str, n_results: int = _N_RESULTS) -> list[s
             ruled_out.append(f"{name} (Key to genera, Key {'/'.join(sections)})")
             continue
         kept += 1
+        paths.append((name, steps))
         if meta["genus"] not in genera:
             docs.extend(t for t in _genus_intro(collection, meta["genus"]) if t not in docs)
         genera.add(meta["genus"])
@@ -285,6 +310,10 @@ def identification_context(features: str, n_results: int = _N_RESULTS) -> list[s
             shown.setdefault(step, name)
         if steps[same:]:
             docs.append(f"{header}:\n" + "\n".join(f"- {s}" for s in steps[same:]))
+    deciding = _deciding_steps(paths)
+    if deciding:
+        docs.append("Key couplets deciding between the top candidates (the character to ask "
+                    "about if the user has not described it):\n" + "\n".join(f"- {d}" for d in deciding))
     notes = _name_notes(collection, species, features)
     if notes:
         docs.insert(0, "Names in the user's message:\n" + "\n".join(f"- {n}" for n in notes))
