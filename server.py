@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from rag.vectorstore import get_doc_count
 from rag.llm import RAG_SYSTEM, rag_answer, rag_answer_stream
+from rag.checks import checked, note
 from rag.identifier import identification_context, identify_mushroom, identify_mushroom_stream
 from rag.lexical import tokenize
 
@@ -120,9 +121,11 @@ def chat_completions(req: ChatRequest):
         system = system_prompt or RAG_SYSTEM
         if req.stream:
             return streaming_response(
-                rag_answer_stream(user_message, docs, model=req.model, history=history, system=system), req.model
+                checked(rag_answer_stream(user_message, docs, model=req.model, history=history, system=system),
+                        docs, user_message), req.model
             )
         response_text = rag_answer(user_message, docs, model=req.model, history=history, system=system)
+        response_text += note(response_text, docs, user_message)
 
     if req.stream:
         return streaming_response(iter([response_text]), req.model)

@@ -1,6 +1,7 @@
 import re
 
 from rag.keypath import _couplets, key_path, species_index
+from rag.checks import checked, note
 from rag.characters import character_score, compare, description_characters, user_characters
 from rag.lexical import common_names
 from rag.vectorstore import get_collection, query_chunks
@@ -328,10 +329,11 @@ def identify_mushroom(features: str, n_results: int = _N_RESULTS, model: str = "
                       retrieval_query: str | None = None) -> str:
     """`history` holds earlier chat turns; `retrieval_query` defaults to `features`."""
     docs = identification_context(retrieval_query or features, n_results)
-    return llm_identify(features, docs, model=model, history=history)
+    answer = llm_identify(features, docs, model=model, history=history)
+    return answer + note(answer, docs, features)
 
 
 def identify_mushroom_stream(features: str, n_results: int = _N_RESULTS, model: str = "", history=(),
                              retrieval_query: str | None = None):
     docs = identification_context(retrieval_query or features, n_results)
-    yield from llm_identify_stream(features, docs, model=model, history=history)
+    yield from checked(llm_identify_stream(features, docs, model=model, history=history), docs, features)
