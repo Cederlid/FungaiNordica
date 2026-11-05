@@ -71,6 +71,7 @@ Both ports are bound to localhost only.
 | Variable | Default | Effect |
 |---|---|---|
 | `LLM_THINKING` | `0` | `1` turns on the model's reasoning phase. This made answers 3–4× slower in tests, without making them more accurate. |
+| `LLM_TEMPERATURE` | `0` | Sampling temperature. At 0 the same question gives the same answer, so a change can be judged on one run. |
 | `ALLOW_REGISTRATION` | `false` | Allows new LibreChat accounts. |
 
 ## Development

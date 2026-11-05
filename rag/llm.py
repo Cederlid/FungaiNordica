@@ -19,6 +19,8 @@ REMOTE_API_KEY = os.environ.get("REMOTE_API_KEY", "")
 # eval_identify.py it made identify answers 3-4x slower (median 214 s vs ~60 s)
 # without being more accurate. LLM_THINKING=1 turns it back on.
 THINKING = os.environ.get("LLM_THINKING", "0") == "1"
+# 0 makes the same question give the same answer, so a change can be judged on one run
+TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", "0"))
 ANSWER_DEADLINE = 300  # seconds
 
 
@@ -29,7 +31,7 @@ def _chat(messages: list[dict], stream: bool = False, model: str = ""):
         "Content-Type": "application/json",
         "Authorization": f"Bearer {REMOTE_API_KEY}",
     }
-    body = {"messages": messages, "stream": stream}
+    body = {"messages": messages, "stream": stream, "temperature": TEMPERATURE}
     if not THINKING:
         body["chat_template_kwargs"] = {"enable_thinking": False}
     if model:
