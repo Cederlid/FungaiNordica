@@ -9,7 +9,7 @@ The chat interface is [LibreChat](https://www.librechat.ai/). Behind it, a FastA
 1. **Ingest.** The book's PDFs are split into chunks: species descriptions, genus introductions and key couplets. The chunks are embedded with `intfloat/multilingual-e5-base` and stored in a local Chroma database (`chroma_db/`).
 2. **Search.** Each question is first spelling-corrected and translated into the book's vocabulary: "spruce" becomes *Picea*, "warts" becomes *veil fragments*, and "granskogen" becomes *Picea forest*. The search then combines semantic (embedding) search with BM25 keyword search.
 3. **Identify.** For the best-supported species, the server adds the species description, the genus introduction and the key path. The key path is the route through the keys, from the Key to genera down to the species. A reported spore deposit colour rules out species that the keys place in another colour section. Common names in the question are resolved to scientific names, for example "narrkantarell" to *Hygrophoropsis aurantiaca*. The context also says when the book does not describe the named taxon.
-4. **Answer.** The language model answers from this context only. It names fungi by their scientific names, takes edibility from the book alone, and asks about the character that would separate the remaining candidates.
+4. **Answer.** The language model answers from this context only. It names fungi by their scientific names, does not cover edibility, and asks about the character that would separate the remaining candidates.
 
 | Path | Contents |
 |---|---|
