@@ -65,6 +65,13 @@ _COMMON_RULES = (
     "When comparing species, take each species' characters (spore size, habitat, smell) from its "
     "own description or key lead, never from a neighbouring one, and do not compare a character "
     "the context does not give for both.\n"
+    "Answer in the language of the user's question. Users range from beginners to mycologists: "
+    "explain each technical term briefly in plain words and keep the book's term in parentheses "
+    "(e.g. 'vårtiga (verrucose)', 'mandelformade (amygdaloid)', 'warty (verrucose)'), and write "
+    "'spores' and 'spore print', not 'Sp' (in Swedish 'sporerna' and 'sporavtrycket').\n"
+    "When describing a species' spores, also give the spore deposit (spore print) colour when the "
+    "species description, its genus introduction or its key path gives it, and say which of them "
+    "gives it.\n"
     "Write only the answer to the user: never think aloud, quote the user to yourself or draft "
     "the answer ('The user says...', 'I will state...').\n"
 )
