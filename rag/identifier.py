@@ -1,7 +1,7 @@
 import re
 
 from rag.keypath import _couplets, key_path, species_index
-from rag.checks import checked, note
+from rag.checks import checked, fix_words, note
 from rag.characters import character_score, compare, description_characters, user_characters
 from rag.lexical import common_names
 from rag.vectorstore import get_collection, query_chunks
@@ -329,7 +329,7 @@ def identify_mushroom(features: str, n_results: int = _N_RESULTS, model: str = "
                       retrieval_query: str | None = None) -> str:
     """`history` holds earlier chat turns; `retrieval_query` defaults to `features`."""
     docs = identification_context(retrieval_query or features, n_results)
-    answer = llm_identify(features, docs, model=model, history=history)
+    answer = fix_words(llm_identify(features, docs, model=model, history=history))
     return answer + note(answer, docs, features)
 
 

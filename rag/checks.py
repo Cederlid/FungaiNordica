@@ -68,12 +68,35 @@ def note(answer: str, docs: list[str], question: str) -> str:
             .format("them" if len(names) > 1 else "it"))
 
 
+# Swedish the model writes from the English "spore": "Sporeerna är 8-10 μm", "sporeavtrycket"
+_MISSPELT = [(re.compile(r"\b([Ss])poree?(?:rna|na)\b"), r"\1porerna"),
+             (re.compile(r"\b([Ss])poreavtryck"), r"\1poravtryck")]
+
+
+def fix_words(text: str) -> str:
+    for pattern, right in _MISSPELT:
+        text = pattern.sub(right, text)
+    return text
+
+
 def checked(pieces, docs: list[str], question: str):
-    """Pass a streamed answer through, then add the note."""
-    answer = []
+    """Pass a streamed answer through with misspelt words corrected, then add the note.
+
+    The last, possibly unfinished word of each piece waits for the next piece, so a word
+    split between pieces is corrected whole.
+    """
+    answer, pending = [], ""
     for piece in pieces:
-        answer.append(piece)
-        yield piece
+        pending += piece
+        cut = max(pending.rfind(c) for c in " \n\t.,;:!?()*_")
+        if cut < 0:
+            continue
+        done, pending = fix_words(pending[:cut + 1]), pending[cut + 1:]
+        answer.append(done)
+        yield done
+    if pending:
+        answer.append(fix_words(pending))
+        yield answer[-1]
     extra = note("".join(answer), docs, question)
     if extra:
         yield extra
