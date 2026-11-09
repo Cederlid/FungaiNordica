@@ -7,8 +7,8 @@ from rag.lexical import common_names
 from rag.vectorstore import get_collection, query_chunks
 from rag.llm import identify as llm_identify, identify_stream as llm_identify_stream
 
-_N_RESULTS = 8
-_MAX_CANDIDATES = 6
+_N_RESULTS = 5
+_MAX_CANDIDATES = 4
 _RRF_K = 60  # as in the hybrid search
 _SCORED = 20  # chunks whose support decides the candidate order
 _POOL = 100  # ranked chunks searched for the best species of a genus a couplet leads to
