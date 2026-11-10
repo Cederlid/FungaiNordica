@@ -1,0 +1,496 @@
+[
+ {
+  "kind": "identify",
+  "species": "Leccinum versipelle (Fr.) Snell  (L. percandidum (Vassilkov) Watling, L. roseotinctum Watling, L. ceri­",
+  "genus": "Leccinum",
+  "query": "I found a big mushroom with an orange-brown, slightly fuzzy cap that was about 10 cm wide, sitting near some birch trees. Its stem was covered in dark grey or blackish rough scales, and when I broke the flesh near the bottom of the stem, it quickly turned a bluish-green color.",
+  "who": "beginner",
+  "lang": "English",
+  "expect": "Leccinum versipelle"
+ },
+ {
+  "kind": "identify",
+  "species": "Lactarius necator (Bull.: Fr.) Pers.  (L. plumbeus (Bull.: Fr.) Gray, L. turpis (Weinm.) Fr.)",
+  "genus": "Lactarius",
+  "query": "I found a sticky mushroom with a dark olive to almost blackish cap, slimy in the middle and hairy towards the edge. It grew under birch and spruce, and when I cut it, it released white milk that tasted very hot.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Lactarius necator"
+ },
+ {
+  "kind": "identify",
+  "species": "Suillus granulatus (L.: Fr.) Roussel",
+  "genus": "Suillus",
+  "query": "Found a sticky, brownish cap mushroom in the pines that had bright lemon-yellow tubes underneath and was leaking milky drops when young. The stem was pale yellow with distinctive glandular dots near the top and lacked any ring, while the flesh inside was straw-colored.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Suillus granulatus"
+ },
+ {
+  "kind": "identify",
+  "species": "Agaricus campestris L.: Fr.  (Psalliota c. (L.: Fr.) Quél., P. c. var. squamulosa Rea, Agaricus c. var s.",
+  "genus": "Agaricus",
+  "query": "I found a white mushroom with a 5 cm cap that turned slightly pale brown when touched, growing right in the middle of an open grassy lawn. It has a smooth white stem with a thin, fragile ring near the top and gives off a faint, slightly sour smell.",
+  "who": "beginner",
+  "lang": "English",
+  "expect": "Agaricus campestris"
+ },
+ {
+  "kind": "identify",
+  "species": "Hygrocybe virginea (Wulfen: Fr.) P.D. Orton & Watling var. virginea (Hygrophorus v. (Wulfen: Fr.)",
+  "genus": "Hygrocybe",
+  "query": "Hittade en liten, vit hattsvamp på 3-7 cm med klibbig hatt när den var blöt, men som torkade mattvit och fick genomskinliga ränder vid kanten. Gällarna var vita, löpte ner på stjälken som var torr och slät, och den växte på en gammal betesmark bland björkar och ekar.",
+  "who": "fairly experienced forager",
+  "lang": "Swedish",
+  "expect": "Hygrocybe virginea"
+ },
+ {
+  "kind": "identify",
+  "species": "Tricholomopsis rutilans (Schaeff.: Fr.) Singer",
+  "genus": "Tricholomopsis",
+  "query": "I found a striking cluster of mushrooms growing directly on a pine stump, featuring bright yellow caps and gills covered in distinctive dark purple scales and fibers. The stems are yellow but share that same scaly purple texture, and the whole group is quite compact, with caps only about 5 to 10 cm across.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Tricholomopsis rutilans"
+ },
+ {
+  "kind": "identify",
+  "species": "Paxillus involutus (Batsch : Fr.) Fr.",
+  "genus": "Paxillus",
+  "query": "I found a brown mushroom with a funnel-shaped cap that has a fuzzy edge, about 6 cm wide. It has yellowish gills that turn brownish when touched, and I spotted it growing on the ground near birch trees.",
+  "who": "beginner",
+  "lang": "English",
+  "expect": "Paxillus involutus"
+ },
+ {
+  "kind": "identify",
+  "species": "Laccaria laccata (Scop.: Fr.) Berk. & Broome  (incl. var. pallidifolia (Peck) Peck and var. moelleri",
+  "genus": "Laccaria",
+  "query": "Found a small, flesh-coloured mushroom with a slightly sticky, translucent cap that shows striations at the edge. It has widely spaced gills running down a thin, matching stem and was growing in the leaf litter under birch trees.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Laccaria laccata"
+ },
+ {
+  "kind": "identify",
+  "species": "Amanita muscaria (L.: Fr.) Lam. var. muscaria",
+  "genus": "Amanita",
+  "query": "I found a big, bright red mushroom with white warty flakes on the cap and pure white gills. It had a thick white stem with a skirt-like ring and a distinct bulbous base, growing right near some birch and pine trees.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Amanita muscaria"
+ },
+ {
+  "kind": "identify",
+  "species": "Clitocybe odora (Bull.: Fr.) P. Kumm. var. odora  (Lepista o. (Bull.: Fr.) Harmaja)",
+  "genus": "Clitocybe",
+  "query": "J hittade en liten svamp med en blekgråblå till grönaktig hatt och stjäl, där skivorna under hatten är täta och löper ner på stjälken. Den doftar mycket starkt av anis och växer på marken bland löv och barr i en blandad skog med både björk och gran.",
+  "who": "beginner",
+  "lang": "Swedish",
+  "expect": "Clitocybe odora"
+ },
+ {
+  "kind": "identify",
+  "species": "Coprinopsis atramentaria (Bull.: Fr.) Redhead, Vilgalys & Moncalvo  (Coprinus a. (Bull.: Fr.) Fr.)",
+  "genus": "Coprinopsis",
+  "query": "Found a tall, smooth white stem with a faint ring near the base supporting a grey, bell-shaped cap that was turning black and melting into ink at the edges. The gills were extremely crowded and dark, while the cluster grew right next to some decaying birch stumps.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Coprinopsis atramentaria"
+ },
+ {
+  "kind": "identify",
+  "species": "Tylopilus felleus (Bull.: Fr.) P. Karst.",
+  "genus": "Tylopilus",
+  "query": "Found a sturdy bolete in the mixed birch and pine woods with a snuff-brown, velvety cap about 10 cm wide. The white pore surface turned a distinct salmon-pink when touched, and the thick stem had a dark brown net pattern on an ochre background. It smelled nothing special, but tasting a tiny bit confirmed it was intensely bitter.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Tylopilus felleus"
+ },
+ {
+  "kind": "identify",
+  "species": "Psilocybe semilanceata (Fr.) P. Kumm.",
+  "genus": "Psilocybe",
+  "query": "I found tiny mushrooms with slimy, pointed caps that look greyish-brown and have pale gills underneath. The stems are very thin and whitish, but the base turns blue when touched, and they are growing in grass near open areas.",
+  "who": "beginner",
+  "lang": "English",
+  "expect": "Psilocybe semilanceata"
+ },
+ {
+  "kind": "identify",
+  "species": "Macrolepiota procera (Scop.: Fr.) Singer",
+  "genus": "Macrolepiota",
+  "query": "I found a massive parasol mushroom about 25 cm wide in an open, grassy area near pine trees, featuring a cap covered in concentric brown scales on a pale background. The thick stem has distinctive speckled brown patterns like snakeskin, a double ring, and swells slightly at the base, while the crowded white gills have no strong smell.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Macrolepiota procera"
+ },
+ {
+  "kind": "identify",
+  "species": "Calocybe gambosa (Fr.: Fr.) Donk f. gambosa  (C. georgii (L.) Kalamees, C. vasilievae (Singer) Singer)",
+  "genus": "Calocybe",
+  "query": "Hittade en klump med vita, trånga skivor och en vit, fibrilig fot på en fuktig äng bland lövträden. Hattarna är krämvita, torra och lite oregelbundna, men luktar starkt och obehagligt av mjöl.",
+  "who": "fairly experienced forager",
+  "lang": "Swedish",
+  "expect": "Calocybe gambosa"
+ },
+ {
+  "kind": "identify",
+  "species": "Flammulina velutipes (Curtis : Fr.) P. Karst. var. velutipes",
+  "genus": "Flammulina",
+  "query": "I found a cluster of small mushrooms growing directly on a dead log, featuring slimy, bright orange caps with darker brown centers and pale yellow gills underneath. The stems are notably fuzzy and velvety, fading from cream at the top to dark reddish-brown at the base, and they lack any ring on the stalk.",
+  "who": "beginner",
+  "lang": "English",
+  "expect": "Flammulina velutipes"
+ },
+ {
+  "kind": "identify",
+  "species": "Russula violaceoincarnata Knudsen & T. Borgen",
+  "genus": "Russula",
+  "query": "I found a sturdy mushroom with a broad, smooth, and shiny cap that showed mixed colours of grey-brown and violaceous tones, sitting on a white, pruinose stem that flared slightly at the top. The gills underneath were pale ochre and attached directly to the stem, which had no ring or volva. It was growing in the dirt near a birch tree along a path, with a mild taste and no distinct smell.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Russula violaceoincarnata"
+ },
+ {
+  "kind": "identify",
+  "species": "Agrocybe praecox (Pers.: Fr.) Fayod",
+  "genus": "Agrocybe",
+  "query": "I found a cluster of small caps, about 3 to 8 cm wide, that were greasy and ochre-brown when wet but faded to a pale whitish-grey as they dried, with a distinct low bump in the center. The gills turned dark brown from pale grey-brown, and the thin whitish stems had a ring and attached white cord-like strands at the base, all releasing a strong fresh-bread smell. They were growing right in the grass under some birch trees.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Agrocybe praecox"
+ },
+ {
+  "kind": "identify",
+  "species": "Tubaria confragosa (Fr.) Harmaja",
+  "genus": "Tubaria",
+  "query": "I found a small mushroom growing on sawdust near some pine trees, featuring an orange-brown cap about 4 cm wide and a thin stem with a distinct ring around it. The gills underneath match the cap's rusty brown color, and the whole thing feels dry to the touch.",
+  "who": "beginner",
+  "lang": "English",
+  "expect": "Tubaria confragosa"
+ },
+ {
+  "kind": "identify",
+  "species": "Cystoderma amianthinum (Scop.: Fr.) Fayod  (C. rugosoreticulata (F. Lorinser) Wasser)",
+  "genus": "Cystoderma",
+  "query": "J hittade en liten, gulbrun hattsvamp med vita skivor som växte direkt i mossen bland lövträd och buskage. Den var bara cirka 1-5 cm stor och hade en tunn stam, men luktade inte särskilt mycket.",
+  "who": "fairly experienced forager",
+  "lang": "Swedish",
+  "expect": "Cystoderma amianthinum"
+ },
+ {
+  "kind": "identify",
+  "species": "Marasmiellus vaillantii (Pers.: Fr.) Singer",
+  "genus": "Marasmiellus",
+  "query": "Found these tiny 3-20 mm mushrooms on some damp woody debris, with small white to pale ochre caps that had a slight bump in the center. The stems were very thin, looking pale and fuzzy at the top but turning a dull orange-yellow towards the base, and the gills were spaced out without any thickened edges.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Marasmiellus vaillantii"
+ },
+ {
+  "kind": "identify",
+  "species": "Mycena galopus (Pers.: Fr.) P. Kumm.",
+  "genus": "Mycena",
+  "query": "I found a tiny, delicate mushroom with a grey-brown, bell-shaped cap about 1.5 cm wide that has faint lines radiating from the center. It has a very thin, hairy stem and pale gills, and when I broke it, it oozed a cloudy white liquid. It was growing in the leaf litter under some pine trees in the forest.",
+  "who": "beginner",
+  "lang": "English",
+  "expect": "Mycena galopus"
+ },
+ {
+  "kind": "identify",
+  "species": "Stropharia coronilla (Bull.: Fr.) Quél.",
+  "genus": "Stropharia",
+  "query": "Found a cluster in short lawn grass near an open field, featuring sticky, straw-yellow caps about 3-6 cm wide. The gills had turned a dark, violet-tinged brown with a distinct white edge, sitting on stout, whitish stems marked by a prominent, grooved ring.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Stropharia coronilla"
+ },
+ {
+  "kind": "identify",
+  "species": "Cortinarius pholideus (Fr.: Fr.) Fr.",
+  "genus": "Cortinarius",
+  "query": "Found a firm mushroom with a scaly, brownish cap about 4-7 cm wide and a whitish, fibrillose stem showing distinct bluish tints near the top. The gills started off pale blue before turning brown, and I spotted dark brown universal veil remains forming a ring-like zone on the stem. It was growing on acid soil under birch trees, with a faint smell and white flesh that darkened towards the base.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Cortinarius pholideus"
+ },
+ {
+  "kind": "identify",
+  "species": "Lepiota clypeolaria (Bull.: Fr.) Kumm.  (L. ochraceosulphurescens Bon)",
+  "genus": "Lepiota",
+  "query": "J hittade en svamp med en vit fot och en hatt som är ljusbrun i mitten men spricker upp till gulbruna fjäll mot kanterna. Den har vita skivor under hatten och luktar ganska illa, och den växte på marken bland björkar.",
+  "who": "beginner",
+  "lang": "Swedish",
+  "expect": "Lepiota clypeolaria"
+ },
+ {
+  "kind": "identify",
+  "species": "Hebeloma velutipes Bruchet  (H. leucosarx P.D. Orton s. auct. p.p.)",
+  "genus": "Hebeloma",
+  "query": "I found a small, whitish mushroom with crowded gills that had tiny droplets on them and a distinct radish-like smell. The stem was white but turned brownish with age, felt velvety to the touch, and had a noticeable bulbous base. It was growing near birch trees.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Hebeloma velutipes"
+ },
+ {
+  "kind": "identify",
+  "species": "Galerina atkinsoniana A.H. Sm.",
+  "genus": "Galerina",
+  "query": "I found tiny caps, only up to a centimeter wide, growing in a cluster on mossy ground near some conifers. They have a shiny, bell-shaped top that is ochre-colored with distinct grooves running all the way to the reddish-brown center, and the pale gills are attached directly to the stem. The thin stems start pale yellow at the top but quickly turn a bright red-brown towards the base, with no ring or veil remnants visible.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Galerina atkinsoniana"
+ },
+ {
+  "kind": "identify",
+  "species": "Conocybe siliginea (Fr.: Fr.) Kühner",
+  "genus": "Conocybe",
+  "query": "I found some tiny mushrooms in the dry grass near some spruce trees; they have very small, pale beige caps that are a bit wrinkled and look damp. The stems are thin, white, and only about 1.5 cm thick, while the gills underneath are spaced quite far apart. They grew on bare soil at the edge of the woods and have no distinct smell or ring on the stem.",
+  "who": "beginner",
+  "lang": "English",
+  "expect": "Conocybe siliginea"
+ },
+ {
+  "kind": "identify",
+  "species": "Neolentinus lepideus (Fr.: Fr.) Redhead & Ginns  (Lentinus l. (Fr.: Fr.) Fr.)",
+  "genus": "Neolentinus",
+  "query": "I found this tough, woody mushroom growing on a sunlit pine stump; it had a dry, whitish cap covered in large, dark brown scales and thick, serrated ochre gills that ran down the stem. The stem was stiff, scaly, and had a narrow ring, giving off a strong, aromatic scent.",
+  "who": "fairly experienced forager",
+  "lang": "English",
+  "expect": "Neolentinus lepideus"
+ },
+ {
+  "kind": "identify",
+  "species": "Panaeolus semiovatus (Sowerby: Fr.) S. Lundell var. semiovatus  (Anellaria s. (Sowerby: Fr.) A. Pear­",
+  "genus": "Panaeolus",
+  "query": "Hittade en stor, glansig hattsvamp med en ivory-vit, lätt rynkad hatt på en gammal hästgödselstack i hagen. Den hade en lång, tunn stjäl med ett upphöjt ringrester, täta skivor som var ljusgrå med vita kanter, och inget tydlig lukt.",
+  "who": "fairly experienced forager",
+  "lang": "Swedish",
+  "expect": "Panaeolus semiovatus"
+ },
+ {
+  "kind": "fact-spores",
+  "species": "Clitopilus prunulus (Scop.: Fr.) P. Kumm.",
+  "query": "What are the spore measurements of Clitopilus prunulus?",
+  "answer": "9-12 x 4-6"
+ },
+ {
+  "kind": "fact-spores",
+  "species": "Lactarius deliciosus (L.: Fr.) Gray",
+  "query": "What are the spore measurements of Lactarius deliciosus?",
+  "answer": "8-10.5 x 6.5-8"
+ },
+ {
+  "kind": "fact-spores",
+  "species": "Melanoleuca cognata (Fr.) Konrad & Maubl.  (M. adstringens (Pers.: Fr.) Konrad s. auct.)",
+  "query": "What are the spore measurements of Melanoleuca cognata?",
+  "answer": "7-9.5 x 4-6"
+ },
+ {
+  "kind": "fact-spores",
+  "species": "Hypholoma fasciculare (Huds.: Fr.) P. Kumm. var. fasciculare",
+  "query": "What are the spore measurements of Hypholoma fasciculare?",
+  "answer": "6-8 x 4-4.5"
+ },
+ {
+  "kind": "fact-spores",
+  "species": "Psilocybe silvatica (Peck) Singer & A.H. Sm.  (Phaeogalera medullosa (Bres.) M.M. Moser, P. tenax (Fr.)",
+  "query": "What are the spore measurements of Psilocybe silvatica?",
+  "answer": "8-10.5 x 4.5-6"
+ },
+ {
+  "kind": "fact-spores",
+  "species": "Gymnopus acervatus (Fr.: Fr.) Murrill  (Collybia a. (Fr.: Fr.) P. Kumm.)",
+  "query": "What are the spore measurements of Gymnopus acervatus?",
+  "answer": "5.5-8 x 2.5-3.5"
+ },
+ {
+  "kind": "fact-habitat",
+  "species": "Xerocomus chrysenteron (Bull.) Quél. (see note p. 911)",
+  "query": "Where does Xerocomus chrysenteron grow, and with which trees?",
+  "answer": [
+   "Fagus"
+  ]
+ },
+ {
+  "kind": "fact-habitat",
+  "species": "Cortinarius cinnamomeus (L.: Fr.) Gray",
+  "query": "Where does Cortinarius cinnamomeus grow, and with which trees?",
+  "answer": [
+   "Betula",
+   "Picea",
+   "Pinus"
+  ]
+ },
+ {
+  "kind": "fact-habitat",
+  "species": "Lactarius subdulcis (Bull.: Fr.) Gray",
+  "query": "Where does Lactarius subdulcis grow, and with which trees?",
+  "answer": [
+   "Carpinus",
+   "Corylus",
+   "Fagus",
+   "Quercus"
+  ]
+ },
+ {
+  "kind": "fact-toxic",
+  "species": "Amanita muscaria (L.: Fr.) Lam. var. muscaria",
+  "query": "Is Amanita muscaria edible?",
+  "declines": true
+ },
+ {
+  "kind": "fact-toxic",
+  "species": "Mycena pura (Pers.: Fr.) P. Kumm.  (Prunulus p. (Pers.: Fr.) Murrill)",
+  "query": "Is Mycena pura edible?",
+  "declines": true
+ },
+ {
+  "kind": "fact-toxic",
+  "species": "Cortinarius rubellus Cooke  (C. speciosissimus Kühner & Romagn., C. orellanoides Rob. Henry)",
+  "query": "Is Cortinarius rubellus edible?",
+  "declines": true
+ },
+ {
+  "kind": "fact-toxic",
+  "species": "Amanita phalloides (Vaill.: Fr.) Link var. phalloides",
+  "query": "Is Amanita phalloides edible?",
+  "declines": true
+ },
+ {
+  "kind": "diff",
+  "id": "pantherina-rubescens",
+  "query": "How do I tell Amanita pantherina from Amanita rubescens?",
+  "must": [
+   "striate",
+   "red"
+  ],
+  "species": "Amanita pantherina"
+ },
+ {
+  "kind": "diff",
+  "id": "xanthodermus-campestris",
+  "query": "What is the difference between Agaricus xanthodermus and Agaricus campestris?",
+  "must": [
+   "yellow",
+   "carbolic|ink|phenol"
+  ],
+  "species": "Agaricus xanthodermus"
+ },
+ {
+  "kind": "genus",
+  "id": "lactarius",
+  "query": "What characterises the genus Lactarius?",
+  "must": [
+   "milk|latex"
+  ],
+  "species": "Lactarius"
+ },
+ {
+  "kind": "genus",
+  "id": "cortinarius-deposit",
+  "query": "What colour is the spore deposit of Cortinarius?",
+  "must": [
+   "rust|cinnamon|fulvous"
+  ],
+  "species": "Cortinarius"
+ },
+ {
+  "kind": "fact-sv",
+  "id": "edulis-sporer",
+  "query": "Hur stora är sporerna hos Boletus edulis?",
+  "must": [
+   "14-17|14–17"
+  ],
+  "species": "Boletus edulis"
+ },
+ {
+  "kind": "fact-sv",
+  "id": "virosa-giftig",
+  "query": "Är Amanita virosa giftig?",
+  "species": "Amanita virosa",
+  "declines": true
+ },
+ {
+  "kind": "fact-sv",
+  "id": "torminosus-var",
+  "query": "Var växer Lactarius torminosus?",
+  "must": [
+   "Betula|björk"
+  ],
+  "species": "Lactarius torminosus"
+ },
+ {
+  "kind": "identify-sv",
+  "id": "edulis-sv",
+  "query": "Hittade en stor svamp i granskogen med brun hatt och rör under hatten istället för skivor. Foten var tjock och ljus med ett vitt nätmönster. Vad kan det vara?",
+  "expect": "Boletus edulis"
+ },
+ {
+  "kind": "identify-sv",
+  "id": "comatus-sv",
+  "query": "Jag hittade en hög vit svamp i gräsmattan med en lång cylindrisk fjällig hatt. Skivorna blir svarta och flyter ut. Vad är det för svamp?",
+  "expect": "Coprinus comatus"
+ },
+ {
+  "kind": "absent",
+  "id": "cantharellus-spores",
+  "query": "What are the spore measurements of Cantharellus cibarius?",
+  "species": "Cantharellus cibarius"
+ },
+ {
+  "kind": "absent",
+  "id": "kantarell-sv",
+  "query": "Hur känner jag igen en kantarell och vad kan den förväxlas med?",
+  "species": "Cantharellus cibarius"
+ },
+ {
+  "kind": "absent",
+  "id": "gyromitra",
+  "query": "Is Gyromitra esculenta poisonous?",
+  "species": "Gyromitra esculenta",
+  "declines": true
+ },
+ {
+  "kind": "multi",
+  "id": "xanthodermus-2turn",
+  "turns": [
+   "I found a white mushroom on a lawn in a park, cap about 8 cm, white stem with a large ring, gills pinkish grey turning dark brown. What is it?",
+   "When I rubbed the stem base it turned bright yellow, and it smells like ink."
+  ],
+  "expect": "Agaricus xanthodermus"
+ },
+ {
+  "kind": "multi",
+  "id": "torminosus-2turn",
+  "turns": [
+   "I found a mushroom under birch with a pinkish, zoned cap with a very hairy, woolly margin. It bleeds milk when cut. What could it be?",
+   "What colour is the milk and how does it taste?"
+  ],
+  "expect": "Lactarius torminosus",
+  "must": [
+   "white",
+   "acrid|hot|peppery"
+  ]
+ },
+ {
+  "kind": "identify",
+  "id": "rubellus-print",
+  "query": "In a damp spruce forest I found a reddish-brown mushroom, cap 5 cm with a pointed umbo, distant rusty red-brown gills, a yellowish stem with yellow bands from the veil, and a faint radish smell. The spore print was rust brown. What is it?",
+  "expect": "Cortinarius rubellus"
+ },
+ {
+  "kind": "identify",
+  "id": "hygrophoropsis-print",
+  "query": "Orange funnel-shaped mushroom on a rotten conifer stump, with soft, crowded, forked orange gills running down the stem. The spore print was white. What is it?",
+  "expect": "Hygrophoropsis aurantiaca"
+ },
+ {
+  "kind": "identify",
+  "id": "pantherina-eat",
+  "query": "Can I eat this? Brown cap about 7 cm covered in small white flakes, white gills, white stem with a smooth white ring and a bulbous base, growing under beech trees.",
+  "expect": "Amanita pantherina",
+  "declines": true
+ }
+]
