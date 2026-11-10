@@ -70,7 +70,16 @@ def note(answer: str, docs: list[str], question: str) -> str:
 
 # Swedish the model writes from the English "spore": "Sporeerna är 8-10 μm", "sporeavtrycket"
 _MISSPELT = [(re.compile(r"\b([Ss])poree?(?:rna|na)\b"), r"\1porerna"),
-             (re.compile(r"\b([Ss])poreavtryck"), r"\1poravtryck")]
+             (re.compile(r"\b([Ss])poreavtryck"), r"\1poravtryck"),
+             # the prompt asks for "sporavtrycket"; "spormassan" is the model's own wording
+             (re.compile(r"\b([Ss])pormassan\b"), r"\1poravtrycket"),
+             (re.compile(r"\b([Ss])pormassa\b"), r"\1poravtryck"),
+             # last: the model writes "Spormassan (sporeavtrycket)", corrected above to a repeated word
+             (re.compile(r"\b([Ss])por(?:massan|avtryck(?:et)?)\s*\((?:sporavtryck(?:et)?|spormassan|spore print|spore deposit)\)"),
+             r"\1poravtrycket")]  # "Sporavtrycket (sporavtrycket)": the explanation is the word itself
+
+
+_UNFINISHED_PAIR = re.compile(r"\b[Ss]por(?:massan|e?avtryck(?:et)?)\b[^)]{0,20}$")
 
 
 def fix_words(text: str) -> str:
@@ -91,6 +100,11 @@ def checked(pieces, docs: list[str], question: str):
         cut = max(pending.rfind(c) for c in " \n\t.,;:!?()*_")
         if cut < 0:
             continue
+        held = _UNFINISHED_PAIR.search(pending[:cut + 1])  # wait for "(sporavtrycket)"
+        if held:
+            cut = held.start() - 1
+            if cut < 0:
+                continue
         done, pending = fix_words(pending[:cut + 1]), pending[cut + 1:]
         answer.append(done)
         yield done
