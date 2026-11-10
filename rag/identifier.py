@@ -8,7 +8,7 @@ from rag.vectorstore import get_collection, query_chunks
 from rag.llm import identify as llm_identify, identify_stream as llm_identify_stream
 
 _N_RESULTS = 5
-_MAX_CANDIDATES = 4
+_MAX_CANDIDATES = 5  # the first 4 by search and characters, the last by characters alone
 _RRF_K = 60  # as in the hybrid search
 _SCORED = 20  # chunks whose support decides the candidate order
 _POOL = 100  # ranked chunks searched for the best species of a genus a couplet leads to
@@ -209,6 +209,17 @@ def _species_characters(collection, name: str, text: str, meta: dict) -> dict:
     return _characters_cache[name]
 
 
+_FREQUENCY = re.compile(r";\s*(very common|very rare|rather common|fairly common|locally common|uncommon|common|rare)\b")  # "Summer to autumn; very common; DK"; not "absent or rare"
+_FREQUENCY_LEVEL = {"very common": 2, "common": 1, "rather common": 1, "fairly common": 1, "locally common": 1,
+                    "uncommon": -1, "rare": -1, "very rare": -2}
+
+
+def _frequency(text: str) -> int:
+    """How common the book says the species is: +2 "very common" ... -2 "very rare", 0 if not said."""
+    m = _FREQUENCY.search(text)
+    return _FREQUENCY_LEVEL[m.group(1)] if m else 0
+
+
 def _by_characters(collection, species: dict, names: list[str], features: str) -> list[str]:
     """Every species in the book, ordered by search place, by character rank and by how well
     its description matches the reported characters."""
@@ -232,7 +243,14 @@ def _by_characters(collection, species: dict, names: list[str], features: str) -
         search = 1 / (_RRF_K + place[n] + 1) if n in place else 0.0
         by_rank = _CHAR_RANK_WEIGHT / (_RRF_K + rank[c]) if c > 0 else 0.0
         return search + by_rank + _CHAR_WEIGHT * c
-    return sorted(species, key=score, reverse=True)
+    order = sorted(species, key=score, reverse=True)
+    # the last candidate place goes to the species the reported characters fit best (the
+    # commoner of equals) when the search missed it: it can outrank no searched species
+    # by its character rank alone, whatever the weights
+    last = _MAX_CANDIDATES - 1
+    best = max((n for n in species if n not in order[:last]),
+               key=lambda n: (chars[n], _frequency(species[n][0]), score(n)))
+    return order[:last] + [best] + [n for n in order[last:] if n != best]
 
 
 def _lead(step: str) -> str:
