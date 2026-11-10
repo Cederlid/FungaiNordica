@@ -32,7 +32,7 @@ _COLOUR_WORDS = {
     "verdigris": "green blue", "blue": "blue", "bluish": "blue", "violet": "violet",
     "violaceous": "violet", "lilac": "violet", "purple": "violet", "purplish": "violet",
     "lavender": "violet", "mauve": "violet", "amethyst": "violet", "pink": "pink", "pinkish": "pink",
-    "rose": "pink", "rosy": "pink", "incarnate": "pink",
+    "rose": "pink", "rosy": "pink", "incarnate": "pink", "fleshcoloured": "pink orange brown",
 }
 # colours people easily take for each other in dull or faded fruitbodies: neither agree
 # nor contradict ("grey" for a pinkish brown Mycena)
@@ -53,6 +53,13 @@ _SMELLS = {"farinaceous": "farinaceous", "mealy": "farinaceous", "raphanoid": "r
            "carbolic": "carbolic", "phenol": "carbolic", "ink": "carbolic", "sweetish": "sweet",
            "sweet": "sweet", "nauseous": "unpleasant", "unpleasant": "unpleasant",
            "indistinct": "indistinct", "insignificant": "indistinct", "absent": "indistinct"}
+# translucent, striate cap margin ("strierad kant"); "not translucently striate" reads as smooth
+_MARGIN = {"striate": "striate", "striated": "striate", "striations": "striate", "striation": "striate",
+           "sulcate": "striate", "translucent": "striate", "translucently": "striate", "streaked": "striate"}
+_HYGRO = {"hygrophanous": "yes", "hygrophanic": "yes"}
+# scales on the cap or stem; a description of a dry cap may still have them, so they only agree
+_SCALES = {"scales": "yes", "scaly": "yes", "squamules": "yes", "squamulose": "yes", "squarrose": "yes",
+           "squamulous": "yes"}
 _SHAPES = {"infundibuliform": "funnel", "funnel": "funnel", "depressed": "funnel", "conical": "conical",
            "conic": "conical", "cone": "conical", "campanulate": "conical", "bell": "conical",
            "umbonate": "umbonate", "umbo": "umbonate", "papillate": "umbonate"}
@@ -86,28 +93,83 @@ _OTHER = {"warts", "wart", "scales", "scale", "flakes", "flake", "patches", "fra
 _STOP_AHEAD = {"and", "with", "och", "med", "but", "men"}
 _NOT = {"not", "never", "without", "no", "lacks", "lacked", "lacking", "inte", "ej", "inget", "ingen",
         "aldrig", "utan", "saknade", "saknar"}
-_PART_ONLY = {"attach": "gills", "spacing": "gills", "smell": "smell", "shape": "cap"}
+_PART_ONLY = {"attach": "gills", "spacing": "gills", "smell": "smell", "shape": "cap", "margin": "cap",
+              "hygro": "cap"}
 _COLOUR_PARTS = ("cap", "gills", "stem", "flesh", "milk")
 # weight of each character when it agrees with (+) or contradicts (-) a description
 _WEIGHTS = {("cap", "colour"): 3.0, ("gills", "colour"): 2.0, ("stem", "colour"): 1.5,
             ("flesh", "colour"): 1.0, ("milk", "colour"): 2.5, ("gills", "attach"): 1.5,
             ("gills", "spacing"): 1.0, ("cap", "surface"): 1.0, ("cap", "shape"): 1.0,
             ("smell", "smell"): 1.5, ("stem", "ring"): 2.0, ("stem", "volva"): 2.0,
-            ("habitat", "substrate"): 2.0, ("habitat", "host"): 1.5}
+            ("habitat", "substrate"): 2.0, ("habitat", "host"): 1.5, ("cap", "margin"): 1.5,
+            ("cap", "hygro"): 1.0, ("cap", "scales"): 1.5, ("stem", "scales"): 1.5,
+            ("cap", "size"): 1.0, ("stem", "size"): 0.5}
 # substrates one report may give for another: moss and grass grow on soil, dung lies in pastures
 _NEAR_SUBSTRATE = {frozenset(p) for p in (("ground", "moss"), ("ground", "grass"), ("ground", "sand"),
                                            ("ground", "burnt"), ("grass", "dung"), ("grass", "moss"),
                                            ("sand", "moss"), ("sand", "grass"))}
 _NEAR_BY_KIND = {"colour": _NEAR, "substrate": _NEAR_SUBSTRATE}
 # a description lists only some of a fruitbody's shapes as it ages: a shape never contradicts
-_NO_CONTRADICTION = {("cap", "shape")}
+_NO_CONTRADICTION = {("cap", "shape"), ("cap", "scales"), ("stem", "scales"), ("cap", "hygro")}
+
+
+_FLESH_COLOURED = re.compile(r"flesh[- ]?colou?red")
+_SIZE = re.compile(r"(?<![\d.])(\d+(?:[.,]\d+)?)(?:\s*[-\u2013]\s*(\d+(?:[.,]\d+)?))?\s*(mm|cm)\b")
+_NUM = r"(\d+(?:\.\d+)?)"
+# "Cap 20-60 mm", "stem 30-80 x 2-6 mm", "cap (10-)20-60(-80) mm": the length or width first named
+_DESC_SIZE = re.compile(r"(?:\(\s*[\d.]+\s*-\s*\)\s*)?" + _NUM + r"\s*[-\u2013]\s*" + _NUM)
+_SIZE_CAP = {"wide", "across", "diameter", "broad", "bred", "bredd", "stor", "stort", "stora", "big", "large",
+             "small", "tvärs", "hatt", "hatten", "cap", "caps", "mushroom", "fungus", "svamp", "svampen"}
+_SIZE_STEM = {"long", "tall", "high", "lång", "lång", "hög", "stem", "stipe", "stalk", "fot", "foten", "stam",
+              "stammen"}
+
+
+def _sizes(lower: str) -> dict:
+    """{("cap"|"stem", "size"): {"lo-hi" in mm}} from "10 cm wide", "1-5 cm stor", "stem 5 cm long".
+
+    The words right after the size (else right before it) say which part it measures; a size
+    with neither is left out.
+    """
+    found = {}
+    for m in _SIZE.finditer(lower):
+        lo = float(m.group(1).replace(",", "."))
+        hi = float((m.group(2) or m.group(1)).replace(",", "."))
+        scale = 10 if m.group(3) == "cm" else 1
+        after = re.findall(r"[a-zà-ÿ]+", lower[m.end():m.end() + 30])[:3]
+        before = re.findall(r"[a-zà-ÿ]+", lower[max(0, m.start() - 30):m.start()])[-3:]
+        part = ""
+        for words in (after, before[::-1]):
+            for w in words:
+                if w in _SIZE_STEM and w not in ("tall", "high", "long", "lång", "hög"):
+                    part = "stem"
+                elif w in _SIZE_CAP:
+                    part = "cap"
+                elif w in ("long", "tall", "high", "lång", "hög"):
+                    part = part or "stem"
+                if part:
+                    break
+            if part:
+                break
+        if part:
+            found.setdefault((part, "size"), set()).add(f"{lo * scale:g}-{hi * scale:g}")
+    return found
+
+
+def _description_size(part: str, seg: str) -> str:
+    """"20-60" (mm) for a segment such as "Cap 20-60 mm, convex"; "" when it gives no range."""
+    m = _DESC_SIZE.search(seg)
+    if not m:
+        return ""
+    scale = 10 if re.search(r"\bcm\b", seg) else 1
+    return f"{float(m.group(1)) * scale:g}-{float(m.group(2)) * scale:g}"
 
 
 def _values(word: str) -> list[tuple[str, str]]:
     """(kind, value) for one English word."""
     out = [("colour", c) for c in _COLOUR_WORDS.get(word, "").split()]
     for kind, table in (("attach", _ATTACH), ("spacing", _SPACING), ("surface", _SURFACE),
-                        ("smell", _SMELLS), ("shape", _SHAPES)):
+                        ("smell", _SMELLS), ("shape", _SHAPES), ("margin", _MARGIN), ("hygro", _HYGRO),
+                        ("scales", _SCALES)):
         if word in table:
             out.append((kind, table[word]))
     return out
@@ -158,7 +220,7 @@ def description_characters(text: str) -> dict:
         lines = lines[2:]
     found, part = {}, ""
     for seg in _segments("\n".join(lines)):
-        words = re.findall(r"[a-z]+", seg.lower())
+        words = re.findall(r"[a-z]+", _FLESH_COLOURED.sub("fleshcoloured", seg.lower()))
         if not words:
             continue
         for key, values in {**_habitat(words), **_veil(words)}.items():
@@ -173,8 +235,15 @@ def description_characters(text: str) -> dict:
             continue
         if re.search(r"concolorous with (the )?cap|paler than (the )?cap|as cap", seg.lower()) and part != "cap":
             found.setdefault((part, "colour"), set()).update(found.get(("cap", "colour"), ()))
+        if part in ("cap", "stem") and (part, "size") not in found and (
+                words[0] in _PARTS or re.match(r"\s*\(?\d", seg)):
+            size = _description_size(part, seg)
+            if size:
+                found[(part, "size")] = {size}
         for i, w in enumerate(words):
             if _NOT.intersection(words[max(0, i - 2):i]):
+                if w in _MARGIN and part == "cap":
+                    found.setdefault(("cap", "margin"), set()).add("smooth")  # "not translucently striate"
                 continue
             for kind, value in _values(w):
                 p = _PART_ONLY.get(kind, part)
@@ -202,7 +271,7 @@ def user_characters(query: str) -> tuple[dict, dict]:
     "röd fot"), else to the last part named before it in the clause ("the gills
     were white"), else to the cap ("a red mushroom").
     """
-    lower = query.lower()
+    lower = _FLESH_COLOURED.sub("fleshcoloured", query.lower())
     raw = re.findall(r"[a-zà-ÿ]+|[,.;!?\n]", lower)
     swedish = _is_swedish(lower, [w for w in raw if w.isalpha()])
     tokens = [[t] if not t.isalpha() else _english(t, swedish) for t in raw]
@@ -242,7 +311,7 @@ def user_characters(query: str) -> tuple[dict, dict]:
         if part == "smell" and neg and not any(k == "smell" for k, _ in vals):
             found.setdefault(("smell", "smell"), set()).add("indistinct")
     words = [w for t in tokens for w in t]
-    for key, values in {**_habitat(words), **_veil([t[-1] for t in tokens])}.items():
+    for key, values in {**_habitat(words), **_veil([t[-1] for t in tokens]), **_sizes(lower)}.items():
         found.setdefault(key, set()).update(values)
     # "luktar inget speciellt", "no smell": a negated smell word without a smell value
     for i, tok in enumerate(tokens):
@@ -252,6 +321,21 @@ def user_characters(query: str) -> tuple[dict, dict]:
     return found, negated
 
 
+def _size_verdict(user: set, book: set) -> int:
+    """+1 when the reported size lies within the book's range (with a margin for estimates),
+    -1 when it is less than half of its smallest or more than twice its largest, else 0."""
+    best = -1
+    for u in user:
+        ulo, uhi = map(float, u.split("-"))
+        for b in book:
+            blo, bhi = map(float, b.split("-"))
+            if uhi >= blo * 0.8 and ulo <= bhi * 1.25:
+                return 1
+            if not (uhi < blo * 0.5 or ulo > bhi * 2):
+                best = max(best, 0)
+    return best
+
+
 def _verdicts(user: tuple[dict, dict], species: dict):
     """(character, user's values, book's values, +1 agrees / 0 near or no call / -1 contradicts)."""
     found, negated = user
@@ -259,7 +343,9 @@ def _verdicts(user: tuple[dict, dict], species: dict):
         have = species.get(key)
         if not have:
             continue
-        if key == ("smell", "smell") and values == {"indistinct"}:
+        if key[1] == "size":
+            yield key, values, have, _size_verdict(values, have)
+        elif key == ("smell", "smell") and values == {"indistinct"}:
             # a species with only a distinctive smell contradicts "no smell"
             yield key, values, have, 1 if "indistinct" in have else -1
         elif values & have:

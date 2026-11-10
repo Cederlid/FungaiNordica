@@ -86,6 +86,8 @@ _VOCAB_SV = {
     "randig": "striate", "strimmig": "striate", "strimmor": "striate", "räfflad": "sulcate striate",
     "fårad": "sulcate", "slät": "smooth glabrous", "glansig": "shiny", "matt": "dull",
     "rynkad": "wrinkled rugose", "spricker": "cracking", "sprucken": "cracked", "genomskinlig": "translucent striate",
+    "strierad": "striate", "streckad": "striate", "hygrofan": "hygrophanous", "hygrofant": "hygrophanous",
+    "köttfärgad": "fleshcoloured", "köttfärgat": "fleshcoloured", "köttfärgade": "fleshcoloured",
     "torr": "dry", "fuktig": "moist", "blöt": "moist", "våt": "moist", "fibrig": "fibrillose",
     "fibrilig": "fibrillose", "trådig": "fibrillose", "skör": "brittle", "seg": "tough", "luden": "hairy",
     "hårig": "hairy", "ullig": "woolly", "tunn": "thin", "tjock": "thick", "ihålig": "hollow", "lång": "long",
