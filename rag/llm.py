@@ -61,6 +61,8 @@ _COMMON_RULES = (
     "'Key couplets deciding between the top candidates' gives, for the first candidate and its "
     "nearest rivals, the couplet where their key paths part: if the user has not described that "
     "character, end by asking about it in plain words.\n"
+    "Tasting is only for identification: whenever you suggest tasting a fungus, say to taste "
+    "a small piece and spit it out, never to swallow it.\n"
     "When comparing species, take each species' characters (spore size, habitat, smell) from its "
     "own description or key lead, never from a neighbouring one, and do not compare a character "
     "the context does not give for both.\n"
