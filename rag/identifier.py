@@ -25,6 +25,11 @@ _CHAR_WEIGHT = 0.0003
 # group, so "brown cap" (hundreds of ties) adds next to nothing. On the test descriptions
 # 0.0002-0.0004 / 0.2-0.4 scored alike: top-1 35 -> 42 of 85, top-6 63 -> 67
 _CHAR_RANK_WEIGHT = 0.3
+# a find is more often a common species than a rare one: each step of the book's frequency
+# ("very common" +2 ... "very rare" -2) counts like 2-3 character points, so it decides
+# between species the characters fit about equally. On the test descriptions 0.0008-0.001
+# scored alike: top-1 43 -> 55 of 85, among the candidates 69 -> 73
+_FREQ_WEIGHT = 0.0008
 _CHAR_GENERA = 3  # the other species of the best-ranked genera count as found at the end of the search
 _GENUS_WIDE = {"attach", "spacing", "surface"}  # characters a genus introduction may give a species
 
@@ -221,8 +226,8 @@ def _frequency(text: str) -> int:
 
 
 def _by_characters(collection, species: dict, names: list[str], features: str) -> list[str]:
-    """Every species in the book, ordered by search place, by character rank and by how well
-    its description matches the reported characters."""
+    """Every species in the book, ordered by search place, by character rank, by how well
+    its description matches the reported characters and by how common it is."""
     user = user_characters(features)
     if not any(user):
         return names
@@ -242,7 +247,7 @@ def _by_characters(collection, species: dict, names: list[str], features: str) -
         c = chars[n]
         search = 1 / (_RRF_K + place[n] + 1) if n in place else 0.0
         by_rank = _CHAR_RANK_WEIGHT / (_RRF_K + rank[c]) if c > 0 else 0.0
-        return search + by_rank + _CHAR_WEIGHT * c
+        return search + by_rank + _CHAR_WEIGHT * c + _FREQ_WEIGHT * _frequency(species[n][0])
     order = sorted(species, key=score, reverse=True)
     # the last candidate place goes to the species the reported characters fit best (the
     # commoner of equals) when the search missed it: it can outrank no searched species
