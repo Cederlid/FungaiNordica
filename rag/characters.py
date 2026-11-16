@@ -90,6 +90,9 @@ _PARTS = {"cap": "cap", "caps": "cap", "pileus": "cap", "frb": "cap", "mushroom"
 _OTHER = {"warts", "wart", "scales", "scale", "flakes", "flake", "patches", "fragments", "remnants",
           "spots", "dots", "ring", "veil", "volva", "fibrils", "squamules", "spores", "spore", "sp",
           "print", "deposit", "mycelium", "base", "bulb"}
+# nouns whose colour is the colour of a part's scales: "yellowish brown scales", "white warts"
+_SCALE_NOUNS = {"scales", "scale", "squamules", "warts", "wart", "flakes", "flake", "patches", "fibrils",
+                "fragments", "remnants"}
 _STOP_AHEAD = {"and", "with", "och", "med", "but", "men"}
 _NOT = {"not", "never", "without", "no", "lacks", "lacked", "lacking", "inte", "ej", "inget", "ingen",
         "aldrig", "utan", "saknade", "saknar"}
@@ -103,12 +106,13 @@ _WEIGHTS = {("cap", "colour"): 3.0, ("gills", "colour"): 2.0, ("stem", "colour")
             ("smell", "smell"): 1.5, ("stem", "ring"): 2.0, ("stem", "volva"): 2.0,
             ("habitat", "substrate"): 2.0, ("habitat", "host"): 1.5, ("cap", "margin"): 1.5,
             ("cap", "hygro"): 1.0, ("cap", "scales"): 1.5, ("stem", "scales"): 1.5,
-            ("cap", "size"): 1.0, ("stem", "size"): 0.5}
+            ("cap", "size"): 1.0, ("stem", "size"): 0.5,
+            ("cap", "scale colour"): 1.5, ("stem", "scale colour"): 1.5}
 # substrates one report may give for another: moss and grass grow on soil, dung lies in pastures
 _NEAR_SUBSTRATE = {frozenset(p) for p in (("ground", "moss"), ("ground", "grass"), ("ground", "sand"),
                                            ("ground", "burnt"), ("grass", "dung"), ("grass", "moss"),
                                            ("sand", "moss"), ("sand", "grass"))}
-_NEAR_BY_KIND = {"colour": _NEAR, "substrate": _NEAR_SUBSTRATE}
+_NEAR_BY_KIND = {"colour": _NEAR, "scale colour": _NEAR, "substrate": _NEAR_SUBSTRATE}
 # a description lists only some of a fruitbody's shapes as it ages: a shape never contradicts
 _NO_CONTRADICTION = {("cap", "shape"), ("cap", "scales"), ("stem", "scales"), ("cap", "hygro")}
 
@@ -212,6 +216,15 @@ def _segments(text: str) -> list[str]:
     return [s.strip() for s in re.split(r";|\.(?=\s|$)", text) if s.strip()]
 
 
+def _before_scales(words: list[str], i: int) -> bool:
+    """Whether words[i] is a colour of scales: "yellowish brown scales", "white to yellowish fragments"."""
+    if words[i] not in _COLOUR_WORDS:
+        return False
+    ahead = words[i + 1:i + 4]
+    noun = next((j for j, a in enumerate(ahead) if a in _SCALE_NOUNS), None)
+    return noun is not None and not any(a in _PARTS for a in ahead[:noun])
+
+
 def description_characters(text: str) -> dict:
     """{(part, kind): {values}} from a species description or key leads."""
     # drop the heading lines: species name, "Genus X | Key A | couplet 12"
@@ -231,6 +244,10 @@ def description_characters(text: str) -> dict:
                           "cheilocystidia", "pleurocystidia", "basidia", "hyphae", "clamps", "on", "in",
                           "under", "with"):
             part = ""  # microscopy, habitat etc.: no part characters
+        if words[0] in ("universal", "veil"):  # "universal veil forming white fragments on the cap"
+            for i, w in enumerate(words):
+                if _before_scales(words, i):
+                    found.setdefault(("cap", "scale colour"), set()).update(_COLOUR_WORDS[w].split())
         if not part:
             continue
         if re.search(r"concolorous with (the )?cap|paler than (the )?cap|as cap", seg.lower()) and part != "cap":
@@ -249,6 +266,8 @@ def description_characters(text: str) -> dict:
                 p = _PART_ONLY.get(kind, part)
                 if p == part or kind in _PART_ONLY:
                     found.setdefault((p, kind), set()).add(value)
+            if part in ("cap", "stem") and _before_scales(words, i):
+                found.setdefault((part, "scale colour"), set()).update(_COLOUR_WORDS[w].split())
     return found
 
 
@@ -282,14 +301,27 @@ def user_characters(query: str) -> tuple[dict, dict]:
         vals = [v for w in tok for v in _values(w)]
         if not vals:
             continue
-        part, other = "", False
+        part, other, scale = "", False, False
         for j in range(i + 1, min(i + 4, len(tokens))):
             if not tokens[j][0].isalpha() or tokens[j][0] in _STOP_AHEAD:
                 break
             part = next((_PARTS[w] for w in names[j] if w in _PARTS), "")
             other = bool(_OTHER.intersection(tokens[j]))
+            scale = bool(_SCALE_NOUNS.intersection(tokens[j]))
             if part or other:
                 break
+        if other and scale:
+            on = "cap"  # the scales of the part last named in the clause, else of the cap
+            for j in range(i - 1, -1, -1):
+                if not tokens[j][0].isalpha() and tokens[j][0] != ",":
+                    break
+                named = next((_PARTS[w] for w in names[j] if w in _PARTS), "")
+                if named:
+                    on = named if named == "stem" else "cap"
+                    break
+            colours = {v for k, v in vals if k == "colour"}
+            if colours and not _NOT & {w for t in tokens[max(0, i - 2):i] for w in t}:
+                found.setdefault((on, "scale colour"), set()).update(colours)
         if not part and not other:
             for j in range(i - 1, -1, -1):
                 if not tokens[j][0].isalpha() and tokens[j][0] != ",":
@@ -348,6 +380,10 @@ def _verdicts(user: tuple[dict, dict], species: dict):
         elif key == ("smell", "smell") and values == {"indistinct"}:
             # a species with only a distinctive smell contradicts "no smell"
             yield key, values, have, 1 if "indistinct" in have else -1
+        elif key[1] == "scale colour":
+            # every colour named must be the book's: "yellowish brown scales" is not "reddish brown"
+            near = values & have or any(frozenset((u, h)) in _NEAR for u in values for h in have)
+            yield key, values, have, 1 if values <= have else 0 if near else -1
         elif values & have:
             yield key, values, have, 1
         elif key in _NO_CONTRADICTION or any(frozenset((u, h)) in _NEAR_BY_KIND.get(key[1], ())
