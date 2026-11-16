@@ -363,7 +363,7 @@
   "id": "pantherina-rubescens",
   "query": "How do I tell Amanita pantherina from Amanita rubescens?",
   "must": [
-   "striate",
+   "striate|sulcate",
    "red"
   ],
   "species": "Amanita pantherina"
