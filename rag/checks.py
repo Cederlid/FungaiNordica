@@ -34,7 +34,7 @@ def _known_names() -> tuple[set, set]:
 
 def unsupported_names(answer: str, docs: list[str]) -> list[str]:
     """Binomials in the answer ("Lactarius turpis", "L. turpis") that no context text contains."""
-    context = "\n".join(docs)
+    context = re.sub(r"(?<=[a-z])- (?=[a-z])", "", "\n".join(docs))  # the book's line breaks: "C. splen- dens"
     genera, epithets = _known_names()
     out = []
     for m in re.finditer(r"\b([A-Z][a-z]+|[A-Z]\.)\s+([a-z][a-z\-]{2,})\b", answer):
@@ -79,38 +79,97 @@ _MISSPELT = [(re.compile(r"\b([Ss])poree?(?:rna|na)\b"), r"\1porerna"),
              r"\1poravtrycket")]  # "Sporavtrycket (sporavtrycket)": the explanation is the word itself
 
 
-_UNFINISHED_PAIR = re.compile(r"\b[Ss]por(?:massan|e?avtryck(?:et)?)\b[^)]{0,20}$")
-
-
 def fix_words(text: str) -> str:
     for pattern, right in _MISSPELT:
         text = pattern.sub(right, text)
     return text
 
 
-def checked(pieces, docs: list[str], question: str):
-    """Pass a streamed answer through with misspelt words corrected, then add the note.
+# Edibility. The book's own statements are left out of the context (llm.without_edibility), but
+# the model then adds them from general knowledge ("Macrolepiota procera is widely considered
+# edible") or writes a note on eating nobody asked for; such sentences are left out of the answer.
+_EATING = re.compile(r"(?<![a-zåäö])(?:eat|eats|eating|eaten|edib\w*|inedible|consum\w*|äta|äter|äts|ätlig\w*|"
+                     r"oätlig\w*|ätbar\w*|matsvamp\w*)(?![a-zåäö])", re.I)
+_EDIBLE = re.compile(r"(?<![a-zåäö])(?:edible|ätlig(?!het)\w*|ätbar(?!het)\w*|matsvamp\w*|good to eat|can be eaten|"
+                     r"kan ätas|god att äta)", re.I)
+_NEGATED = re.compile(r"(?:\b(?:not|never|none|no|inte|ej|aldrig)\W+(?:\w+\W+){0,2})$", re.I)
+_DECLINE = re.compile(r"n[o']t answer|svarar inte|besvarar inte|bedömer inte|never enough|aldrig tillräcklig", re.I)
+_POISON = re.compile(r"poison|toxic|deadly|lethal|amanitin|orellanin|giftig|dödlig|förgift", re.I)
+# "widely considered edible", "In general mycology, it is considered poisonous"
+_HEARSAY = re.compile(r"general (?:knowledge|mycology)|widely (?:known|considered)|often considered|"
+                      r"commonly (?:known|considered|regarded)|allmänt (?:känd|ansedd)", re.I)
+_SENTENCE_END = re.compile(r"(?<=[.!?])[ \t]+(?=[*_(\[]*[A-ZÅÄÖ])|\n")
 
-    The last, possibly unfinished word of each piece waits for the next piece, so a word
-    split between pieces is corrected whole.
+
+def _keeps(sentence: str, asked: bool) -> bool:
+    s = re.sub(r"eaten by|(?:upp)?ätna? av", "", sentence)  # "eaten by slugs"
+    if not (_EATING.search(s) or _POISON.search(s)):
+        return True
+    if _HEARSAY.search(s):
+        return False
+    decline = _DECLINE.search(s)
+    claim = s[:decline.start()] if decline else s  # "does not answer whether it is edible"
+    if any(not _NEGATED.search(claim[:m.start()]) for m in _EDIBLE.finditer(claim)):
+        return False
+    # unasked, eating is mentioned only to warn ("do not eat it", "it is poisonous"), but not
+    # "do not eat it unless you are certain"
+    warning = _WARNING.search(s) and not re.search(r"unless|except|om du inte|förrän|utom", s, re.I)
+    return asked or not _EATING.search(s) or bool(_POISON.search(s) or warning)
+
+
+_WARNING = re.compile(r"\b(?:do not|don't|never|ät inte|ät aldrig|inte äta|aldrig äta)\b", re.I)
+
+
+def _without_edibility(text: str, asked: bool, line_start: bool) -> tuple[str, bool]:
+    """The text without the sentences _keeps rejects, and whether it ends at a line start
+    (passed on to the next piece of a streamed answer)."""
+    out, start = [], 0
+    for m in list(_SENTENCE_END.finditer(text)) + [None]:
+        end = m.end() if m else len(text)
+        piece = text[start:end]
+        if not piece:
+            continue
+        if not piece.strip() or _keeps(piece.rstrip(), asked):
+            out.append(piece)
+            line_start = piece.endswith("\n")
+        elif piece.endswith("\n") and not line_start:
+            out.append("\n")  # the line goes on without the left-out sentence
+            line_start = True
+        start = end
+    return "".join(out), line_start
+
+
+def checked(pieces, docs: list[str], question: str):
+    """Pass a streamed answer through with misspelt words corrected and sentences on edibility
+    left out, then add the note.
+
+    Text is passed on a sentence at a time, so a sentence is judged whole and a word split
+    between pieces is corrected whole.
     """
-    answer, pending = [], ""
+    from rag.llm import _EATING as asks_eating  # the same test that gives the model the eating rule
+    asked = bool(asks_eating.search(question))
+    answer, pending, line_start = [], "", True
     for piece in pieces:
         pending += piece
-        cut = max(pending.rfind(c) for c in " \n\t.,;:!?()*_")
-        if cut < 0:
+        ends = list(_SENTENCE_END.finditer(pending))
+        if not ends:
             continue
-        held = _UNFINISHED_PAIR.search(pending[:cut + 1])  # wait for "(sporavtrycket)"
-        if held:
-            cut = held.start() - 1
-            if cut < 0:
-                continue
-        done, pending = fix_words(pending[:cut + 1]), pending[cut + 1:]
-        answer.append(done)
-        yield done
+        cut = ends[-1].end()
+        done, line_start = _without_edibility(fix_words(pending[:cut]), asked, line_start)
+        pending = pending[cut:]
+        if done:
+            answer.append(done)
+            yield done
     if pending:
-        answer.append(fix_words(pending))
-        yield answer[-1]
+        done, _ = _without_edibility(fix_words(pending), asked, line_start)
+        if done:
+            answer.append(done)
+            yield done
     extra = note("".join(answer), docs, question)
     if extra:
         yield extra
+
+
+def cleaned(answer: str, docs: list[str], question: str) -> str:
+    """A whole (not streamed) answer, checked the same way."""
+    return "".join(checked([answer], docs, question))

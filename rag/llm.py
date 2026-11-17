@@ -1,8 +1,11 @@
 import json
 import os
+import re
 import time
 
 import httpx
+
+from rag.lexical import _is_swedish
 
 try:
     from dotenv import load_dotenv
@@ -47,10 +50,11 @@ _COMMON_RULES = (
     "not even in parentheses, and not even when the user uses one. 'Names in the user's message' "
     "says which taxon a common name stands for; if this book does not describe it, say so and do "
     "not describe it with other species' characters.\n"
-    "This service does not cover edibility: never say whether a species is edible, poisonous or "
-    "deadly, and leave out what the context says about it. If the user asks about eating, "
-    "edibility or poison, say only that this service does not answer that, and then answer the "
-    "rest of the message.\n"
+    "Poison: when the context says a species is poisonous or deadly poisonous ('Poisonous', "
+    "'Deadly poisonous'), you may say so, naming the book as the source; never call a species "
+    "poisonous or harmless from general knowledge. Edibility: never say that a species is edible, "
+    "can be eaten or is harmless, and never write about eating or edibility, not even as a note, "
+    "unless the final message says the user asks about eating.\n"
     "If no species description in the context fits the user's find, say so and ask for the "
     "characters that would decide it; never name species the context does not describe.\n"
     "A line 'User's characters against <species>' compares each character the user reported "
@@ -171,6 +175,65 @@ def generate_stream(prompt: str, model: str = ""):
     yield from _stream([{"role": "user", "content": prompt}], model=model)
 
 
+def _language(text: str) -> str:
+    """The line telling the model which language to answer in: it sometimes answers an English
+    question in Swedish."""
+    lower = text.lower()
+    swedish = _is_swedish(lower, re.findall(r"[a-zåäö]+", lower))
+    return "Svara på svenska." if swedish else "Answer in English."
+
+
+_EATING = re.compile(r"\b(?:eat|eats|eating|eaten|edible|edibility|äta|äter|ätlig\w*|ätbar\w*|matsvamp\w*)\b",
+                     re.I)
+
+
+def _instructions(text: str) -> str:
+    """The lines after the question: the answer language (the model sometimes answers an English
+    question in Swedish) and, only when the user asks about eating, how to decline. Given
+    always, the eating rule made the model add an unasked note on eating."""
+    lines = [_language(text)]
+    if _EATING.search(text):
+        lines.insert(0, "The user asks about eating: say first that this service does not answer that "
+                        "and that a description is never enough to eat a fungus safely, name the "
+                        "candidates the context calls poisonous, and then answer the rest of the message. "
+                        "Say nothing else about edibility, not even that the context does not state it.")
+    return "\n".join(lines)
+
+
+# the book's edibility statements: "– Edible and good.", "Many species edible.", "Several species
+# are slightly poisonous and none are considered edible." (the poison part stays)
+_SEGMENT = re.compile(r"(?:(?<![A-Za-z])[A-Z]\.(?= )|[^.;\n])*[.;]?")  # "B. edulis" is not a sentence end
+_HARMLESS = re.compile(r"none poisonous|no species known as poisonous", re.I)
+_CLAUSE_CHAR = r"(?:(?<![A-Za-z])[A-Z]\.(?= )|[^,;.\n])"
+_EDIBLE_CLAUSE = re.compile(rf"(?:,|;| and)\s*{_CLAUSE_CHAR}*\bedible\b{_CLAUSE_CHAR}*", re.I)
+
+
+def _edibility_cut(m: re.Match) -> str:
+    s = m.group(0)
+    if not re.search(r"\bedible\b", s, re.I):
+        return s
+    if _HARMLESS.search(s):
+        return ""
+    s = _EDIBLE_CLAUSE.sub("", s)
+    if not re.search(r"\bedible\b", s, re.I):
+        return s
+    dash = re.search(r"\s*[–-]\s*edible\b", s, re.I)  # "(T. nauseosum) – Edible"
+    if not dash or not s[:dash.start()].strip():
+        return ""
+    kept = s[:dash.start()]
+    return kept + ("." if s.rstrip().endswith(".") and not kept.endswith(".") else "")
+
+
+def without_edibility(doc: str) -> str:
+    """The context text with what the book says about edibility left out: the model repeats
+    'Edible' for a candidate however the prompt forbids it."""
+    return _SEGMENT.sub(_edibility_cut, doc)
+
+
+def _context(docs: list[str]) -> str:
+    return "\n\n---\n\n".join(without_edibility(d) for d in docs)
+
+
 def _messages(system: str, history, final: str) -> list[dict]:
     """System prompt, earlier conversation turns, then the context-bearing final message."""
     turns = [{"role": m["role"], "content": m["content"]} for m in history
@@ -179,8 +242,8 @@ def _messages(system: str, history, final: str) -> list[dict]:
 
 
 def _rag_messages(question: str, context_docs: list[str], history=(), system: str = RAG_SYSTEM) -> list[dict]:
-    context = "\n\n---\n\n".join(context_docs)
-    return _messages(system, history, f"Context from Funga Nordica:\n{context}\n\nQuestion: {question}")
+    return _messages(system, history, f"Context from Funga Nordica:\n{_context(context_docs)}\n\n"
+                                      f"Question: {question}\n\n{_instructions(question)}")
 
 
 def rag_answer(question: str, context_docs: list[str], model: str = "", history=(), system: str = RAG_SYSTEM) -> str:
@@ -192,8 +255,8 @@ def rag_answer_stream(question: str, context_docs: list[str], model: str = "", h
 
 
 def _identify_messages(features: str, context_docs: list[str], history=()) -> list[dict]:
-    context = "\n\n---\n\n".join(context_docs)
-    final = f"Context from Funga Nordica:\n{context}\n\nMushroom features:\n{features}"
+    final = (f"Context from Funga Nordica:\n{_context(context_docs)}\n\n"
+             f"Mushroom features:\n{features}\n\n{_instructions(features)}")
     return _messages(IDENTIFY_SYSTEM, history, final)
 
 

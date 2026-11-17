@@ -410,7 +410,9 @@
   "id": "virosa-giftig",
   "query": "Är Amanita virosa giftig?",
   "species": "Amanita virosa",
-  "declines": true
+  "must": [
+   "dödlig|deadly"
+  ]
  },
  {
   "kind": "fact-sv",
@@ -449,8 +451,7 @@
   "kind": "absent",
   "id": "gyromitra",
   "query": "Is Gyromitra esculenta poisonous?",
-  "species": "Gyromitra esculenta",
-  "declines": true
+  "species": "Gyromitra esculenta"
  },
  {
   "kind": "multi",
